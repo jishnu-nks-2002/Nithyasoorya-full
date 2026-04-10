@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ─── Section shell ─────────────────────────────────────────────────────────── */
+
+.gallery-section {
+  width: 100%;
+  background: #f5f5f0;
+  padding: 100px 60px 80px;
+}
+
+/* ─── Header ────────────────────────────────────────────────────────────────── */
+
+.gallery-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.gallery-header__eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #9b8bb4;
+  margin: 0 0 16px;
+}
+
+.gallery-header__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+}
+
+.gallery-header__sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  color: #6b6b6b;
+  line-height: 1.8;
+  letter-spacing: 0.2px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ─── Filter bar ────────────────────────────────────────────────────────────── */
+
+.gallery-filters {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 48px;
+}
+
+.gallery-filter-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #6b6b6b;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 100px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+  white-space: nowrap;
+}
+
+.gallery-filter-btn:hover {
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.gallery-filter-btn--active {
+  color: #fff;
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+.gallery-filter-btn--active:hover {
+  color: #fff;
+  background: #333;
+  border-color: #333;
+}
+
+/* ─── Grid wrapper ──────────────────────────────────────────────────────────── */
+
+.gallery-grid {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ─── Masonry container ─────────────────────────────────────────────────────── */
+
+.masonry-container {
+  position: relative;
+  width: 100%;
+}
+
+/* ─── Masonry item ──────────────────────────────────────────────────────────── */
+
+.masonry-item {
+  box-sizing: content-box;
+}
+
+/* ─── Masonry image card ────────────────────────────────────────────────────── */
+
+.masonry-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transition: box-shadow 0.35s ease;
+}
+
+.masonry-item:hover .masonry-image {
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.25);
+}
+
+/* ─── Caption overlay ───────────────────────────────────────────────────────── */
+
+.masonry-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 32px 18px 18px;
+  background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(8px);
+  /* GSAP animates opacity + translateY, no CSS transition needed */
+  pointer-events: none;
+  border-radius: 0 0 10px 10px;
+}
+
+.masonry-caption__cat {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.masonry-caption__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+/* ─── Footer CTA ────────────────────────────────────────────────────────────── */
+
+.gallery-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 64px;
+}
+
+.gallery-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #1a1a1a;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+  padding-bottom: 4px;
+  transition: color 0.25s ease, border-color 0.25s ease, gap 0.25s ease;
+}
+
+.gallery-cta:hover {
+  color: #6b3fa0;
+  border-color: #6b3fa0;
+  gap: 16px;
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 968px) {
+  .gallery-section {
+    padding: 80px 30px 60px;
+  }
+
+  .gallery-header__sub {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 576px) {
+  .gallery-section {
+    padding: 60px 16px 48px;
+  }
+
+  .gallery-header {
+    margin-bottom: 32px;
+  }
+
+  .gallery-filters {
+    gap: 6px;
+    margin-bottom: 32px;
+  }
+
+  .gallery-filter-btn {
+    font-size: 9px;
+    padding: 7px 14px;
+  }
+
+  .gallery-footer {
+    margin-top: 48px;
+  }
+}

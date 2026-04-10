@@ -1,0 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Playfair+Display:wght@400;500;600;700;800;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ─── Hero shell ─────────────────────────────────────────────────────────── */
+.gallery-hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 560px;
+  overflow: hidden;
+  /* Fallback bg while media loads */
+  background: #f4f0f9;
+}
+
+/* ─── Full-bleed media layer — fills the entire hero ────────────────────── */
+.gallery-media-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.gallery-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+  z-index: 0;
+}
+.gallery-slide.active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+}
+
+.gallery-hero-image,
+.gallery-hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(0.92) contrast(1.04);
+}
+.gallery-hero-video { opacity: 0.95; }
+
+/* ─── White gradient fade — covers left portion, dissolves into image ────── */
+/*
+   No hard edge. A smooth multi-stop gradient from solid white on the left
+   to fully transparent, allowing the image to bleed naturally through.
+   Adjust the stop percentages to taste.
+*/
+.gallery-white-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    #ffffff          0%,    /* solid white at far left */
+    #ffffff          22%,   /* hold solid across the main text column */
+    rgba(255,255,255,0.96) 32%,
+    rgba(255,255,255,0.80) 42%,
+    rgba(255,255,255,0.50) 52%,
+    rgba(255,255,255,0.18) 62%,
+    rgba(255,255,255,0.04) 72%,
+    rgba(255,255,255,0.00) 82%
+  );
+}
+
+/* ─── Left content — sits above the gradient ─────────────────────────────── */
+.gallery-hero-left {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Content occupies ~48% of width so it stays inside the white zone */
+  width: 54%;
+  padding: 80px 40px 80px 80px;
+  gap: 40px;
+  pointer-events: none; /* let clicks pass through to media; buttons re-enable below */
+}
+
+/* Re-enable pointer events for interactive children */
+.gallery-hero-left * { pointer-events: auto; }
+
+/* ─── Vertical text ──────────────────────────────────────────────────────── */
+.gallery-vertical-text {
+  position: absolute;
+  left: -86px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(10px, 1vw, 13px);
+  font-weight: 500;
+  color: #7B4BA0;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* ─── Content wrapper ────────────────────────────────────────────────────── */
+.gallery-left-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 32px;
+  width: 100%;
+  transition: filter 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
+  padding-left: 44px; /* clear the vertical text */
+}
+
+.gallery-left-content-wrapper.transitioning {
+  filter: blur(8px);
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+/* ─── Label ──────────────────────────────────────────────────────────────── */
+.gallery-left-label {
+  font-family: 'Crimson Text', serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #7B4BA0;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* ─── Heading wrapper ────────────────────────────────────────────────────── */
+.gallery-hero-left-heading-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 80px;
+}
+
+/* ─── Plain static title — NO animation, NO hover effect ────────────────── */
+.gallery-hero-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: clamp(48px, 6.5vw, 88px);
+  color: #7B4BA0;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-align: left;
+  user-select: none;
+  /* deliberately no transition, no transform, no hover rule */
+}
+
+/* ─── Description ────────────────────────────────────────────────────────── */
+.gallery-left-description {
+  font-family: 'Crimson Text', serif;
+  font-size: clamp(17px, 1.8vw, 23px);
+  font-weight: 400;
+  font-style: italic;
+  color: #3a3a3a;
+  line-height: 1.65;
+  max-width: 420px;
+}
+
+/* ─── CTA button ─────────────────────────────────────────────────────────── */
+.gallery-left-button {
+  position: relative;
+  padding: 15px 38px;
+  background: transparent;
+  color: #7B4BA0;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 2px solid #7B4BA0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 0.3s ease, transform 0.15s ease;
+  z-index: 1;
+}
+
+.gallery-left-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: #7B4BA0;
+  transition: width 0.3s ease;
+  z-index: -1;
+}
+.gallery-left-button:hover::before { width: 100%; }
+.gallery-left-button:hover { color: #ffffff; }
+.gallery-left-button:active { transform: scale(0.97); }
+
+/* ─── Nav dots ───────────────────────────────────────────────────────────── */
+.gallery-slider-dots {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  z-index: 10;
+}
+
+.gallery-dot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  border: 2px solid rgba(255,255,255,0.65);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: height 0.3s ease, border-radius 0.3s ease, background 0.3s ease, transform 0.2s ease;
+}
+.gallery-dot:hover {
+  background: rgba(255,255,255,0.75);
+  transform: scale(1.2);
+}
+.gallery-dot.active {
+  height: 30px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.15);
+  border-color: #ffffff;
+}
+.gallery-dot-fill {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 0%;
+  background: #ffffff;
+  border-radius: 5px;
+  transition: height 0.1s linear;
+  pointer-events: none;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .gallery-hero-left { width: 58%; padding: 70px 30px 70px 70px; }
+  .gallery-white-fade {
+    background: linear-gradient(
+      to right,
+      #ffffff 0%, #ffffff 24%,
+      rgba(255,255,255,0.95) 36%,
+      rgba(255,255,255,0.75) 48%,
+      rgba(255,255,255,0.40) 60%,
+      rgba(255,255,255,0.10) 72%,
+      rgba(255,255,255,0.00) 84%
+    );
+  }
+}
+
+@media (max-width: 968px) {
+  .gallery-hero-left {
+    width: 100%;
+    padding: 50px 40px 50px 60px;
+    justify-content: flex-start;
+    padding-top: 80px;
+  }
+  .gallery-left-content-wrapper { padding-left: 36px; }
+  .gallery-left-content-wrapper,
+  .gallery-hero-title,
+  .gallery-left-description { text-align: center; align-items: center; }
+  .gallery-hero-title { font-size: clamp(42px, 10vw, 68px); }
+  .gallery-left-description { font-size: clamp(15px, 3.5vw, 18px); max-width: 100%; }
+  /* On mobile: gradient fills top ~60%, fades downward so image shows below */
+  .gallery-white-fade {
+    background: linear-gradient(
+      to bottom,
+      #ffffff          0%,
+      #ffffff          30%,
+      rgba(255,255,255,0.92) 46%,
+      rgba(255,255,255,0.65) 58%,
+      rgba(255,255,255,0.25) 70%,
+      rgba(255,255,255,0.00) 84%
+    );
+  }
+  .gallery-slider-dots { right: 18px; gap: 14px; }
+}
+
+@media (max-width: 576px) {
+  .gallery-hero-left { padding: 64px 24px 40px 48px; gap: 28px; }
+  .gallery-left-content-wrapper { padding-left: 28px; gap: 22px; }
+  .gallery-hero-title { font-size: clamp(38px, 13vw, 56px); }
+  .gallery-left-description { font-size: clamp(14px, 4.5vw, 16px); }
+  .gallery-left-button { padding: 13px 30px; font-size: 10px; }
+  .gallery-vertical-text { left: 14px; font-size: 9px; letter-spacing: 3px; }
+  .gallery-slider-dots { right: 14px; gap: 12px; }
+  .gallery-dot { width: 8px; height: 8px; }
+  .gallery-dot.active { height: 24px; }
+}

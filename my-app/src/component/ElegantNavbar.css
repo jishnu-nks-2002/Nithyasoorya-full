@@ -1,0 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ─── Base nav shell ────────────────────────────────────────────────────────── */
+
+.en-nav {
+  position: fixed;
+  top: 0;
+  z-index: 1000;
+  overflow: hidden;
+  /* Crystal theme: soft warm ivory — stays neutral to not clash with dark/purple cards */
+  background: #faf7f4;
+
+  --tx: 0px;
+  --ty: 0px;
+  transform: translateX(var(--tx)) translateY(var(--ty));
+
+  transition:
+    width        0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    left         0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    top          0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow   0.45s cubic-bezier(0.4, 0, 0.2, 1);
+
+  will-change: transform, width, height;
+}
+
+/* ── Full-width mode ─────────────────────────────────────────────────────────── */
+
+.en-nav--full {
+  left: 0;
+  width: 100%;
+  --tx: 0px;
+  border-radius: 0;
+  box-shadow: 0 1px 0 rgba(58, 32, 64, 0.1);   /* subtle plum shadow */
+}
+
+/* ── Floating pill mode ──────────────────────────────────────────────────────── */
+
+.en-nav--floating {
+  left: 50%;
+  top: 1.2em;
+  width: 90%;
+  max-width: 800px;
+  --tx: -50%;
+  border-radius: 14px;
+  /* Soft lavender-tinted shadow in floating mode */
+  box-shadow:
+    0 8px 32px rgba(123, 47, 191, 0.18),
+    0 2px 8px rgba(58, 32, 64, 0.1);
+}
+
+@media (min-width: 769px) {
+  .en-nav--floating {
+    top: 2em;
+  }
+}
+
+/* ── Visible ─────────────────────────────────────────────────────────────────── */
+
+.en-nav--visible {
+  --ty: 0px;
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    width        0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    left         0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    top          0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow   0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    transform    0.42s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity      0.42s ease;
+}
+
+/* ── Hidden ──────────────────────────────────────────────────────────────────── */
+
+.en-nav--hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform    0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity      0.3s  ease;
+}
+
+.en-nav--full.en-nav--hidden {
+  transform: translateX(0) translateY(-110%);
+}
+
+.en-nav--floating.en-nav--hidden {
+  transform: translateX(-50%) translateY(calc(-110% - 3em));
+}
+
+.en-nav--full.en-nav--visible {
+  transform: translateX(0) translateY(0);
+}
+
+.en-nav--floating.en-nav--visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── Top bar ───────────────────────────────────────────────────────────────── */
+
+.en-topbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 2;
+}
+
+/* ─── Hamburger ─────────────────────────────────────────────────────────────── */
+
+.en-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.3s ease, padding 0.3s ease, gap 0.3s ease;
+}
+
+.en-hamburger--pill {
+  background: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.en-hamburger--pill .en-hamburger__line {
+  background: #3a2040;   /* dark plum in pill mode */
+  width: 20px;
+}
+
+.en-hamburger:hover:not(.en-hamburger--pill) {
+  background: rgba(123, 47, 191, 0.08);   /* subtle purple tint */
+}
+
+.en-hamburger--pill:hover {
+  background: rgba(123, 47, 191, 0.12);
+}
+
+.en-hamburger__line {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: #3a2040;   /* dark plum */
+  border-radius: 2px;
+  transform-origin: center;
+  transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease, background 0.3s ease;
+}
+
+/* X state */
+.en-hamburger--open .en-hamburger__line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.en-hamburger--open .en-hamburger__line:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.en-hamburger--open .en-hamburger__line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* ─── Logo ──────────────────────────────────────────────────────────────────── */
+
+.en-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.en-logo:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.en-logo__img {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* ─── Right tagline / Home link ─────────────────────────────────────────────── */
+
+.en-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7b2fbf;        /* crystal violet — matches theme */
+  transition: opacity 0.3s ease, color 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.en-tagline:hover {
+  color: #9b4dca;
+}
+
+.en-tagline--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Dropdown container ────────────────────────────────────────────────────── */
+
+.en-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 64px;
+  bottom: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.en-dropdown--visible {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+@media (min-width: 769px) {
+  .en-dropdown {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+/* ─── Cards ─────────────────────────────────────────────────────────────────── */
+
+.en-card {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  min-height: 60px;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+@media (max-width: 768px) {
+  .en-card {
+    flex: 0 0 auto;
+    min-height: 56px;
+  }
+}
+
+.en-card__label {
+  margin: 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .en-card__label {
+    font-size: 18px;
+  }
+}
+
+.en-card__links {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ─── Nav links — hover handled via inline React styles ─────────────────────── */
+
+.en-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  /* opacity & color transitions handled inline so each card accent works */
+}
