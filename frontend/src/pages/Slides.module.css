@@ -1,0 +1,147 @@
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 50vh;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Slide Card ── */
+.slideCard {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+  cursor: grab;
+}
+.slideCard:hover { border-color: var(--border-md); }
+.slideCard:active { cursor: grabbing; }
+
+.dragging { opacity: 0.45; transform: scale(0.97); }
+.dragOver { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-ring); }
+
+/* ── Thumb ── */
+.thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.thumbMedia { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.thumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  opacity: 0.3;
+}
+
+.typeBadge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hiddenBadge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(163,45,45,0.85);
+  color: white;
+}
+
+.dragHandle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  border-radius: 5px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.slideCard:hover .dragHandle { opacity: 1; }
+
+.orderNum {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Info ── */
+.info { padding: 10px 12px 4px; }
+.infoTitle { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.infoDesc { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.untitled { color: var(--text-hint); font-style: italic; }
+
+/* ── Actions ── */
+.actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 12px;
+}
+
+/* ── Add card ── */
+.addCard {
+  border: 1.5px dashed var(--border-md);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 200px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.addCard:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}

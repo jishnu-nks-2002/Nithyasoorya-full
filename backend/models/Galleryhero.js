@@ -4,9 +4,9 @@ const slideSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ['image', 'video'], required: true },
     src: { type: String, required: true },
-    publicId: { type: String }, // Cloudinary public_id for deletion
+    publicId: { type: String },
     alt: { type: String, default: '' },
-    poster: { type: String, default: '' },       // For video thumbnails
+    poster: { type: String, default: '' },
     posterPublicId: { type: String, default: '' },
     title: { type: String, default: '' },
     description: { type: String, default: '' },

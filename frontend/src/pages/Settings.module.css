@@ -1,0 +1,92 @@
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 50vh;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.card {
+  margin-bottom: 1.25rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .formGrid { grid-template-columns: 1fr; }
+}
+
+.formFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+}
+
+/* ── API table ── */
+.apiTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.apiRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+  flex-wrap: wrap;
+}
+.apiRow:last-child { border-bottom: none; }
+
+.methodBadge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  min-width: 54px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.method_get    { background: var(--info-bg);    color: var(--info); }
+.method_post   { background: var(--success-bg); color: var(--success); }
+.method_put    { background: var(--warning-bg); color: var(--warning); }
+.method_delete { background: var(--danger-bg);  color: var(--danger); }
+
+.apiLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.apiPath {
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.authTag {
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}

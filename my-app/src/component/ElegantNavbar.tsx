@@ -4,58 +4,62 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Jost, Cormorant_Garamond } from "next/font/google";
 
-const jost = Jost({ weight: ["300", "400", "500", "600"], subsets: ["latin"], display: "swap" });
-const cormorant = Cormorant_Garamond({ weight: ["300", "400", "500", "600"], subsets: ["latin"], display: "swap" });
+const jost      = Jost({ weight: ["300","400","500","600"], subsets: ["latin"], display: "swap" });
+const cormorant = Cormorant_Garamond({ weight: ["300","400","500","600"], subsets: ["latin"], display: "swap" });
 
-const DROPDOWN_DATA = {
-  COLLECTIONS: {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Category {
+  _id: string; name: string; slug: string;
+  brand: string; brandColor: string; subtitle: string; order: number;
+}
+
+interface BrandSection {
+  brand: string; brandColor: string;
+  links: { label: string; sub: string; href: string }[];
+}
+
+interface DropData {
+  featured: { title: string; subtitle: string; accent: string; tag: string };
+  sections: BrandSection[];
+}
+
+// ── Group flat category list into brand columns ───────────────────────────────
+function buildCollectionsDropdown(categories: Category[]): DropData {
+  const map = new Map<string, BrandSection>();
+  categories.forEach((cat) => {
+    const brand = cat.brand?.trim() || "Collections";
+    if (!map.has(brand)) {
+      map.set(brand, { brand, brandColor: cat.brandColor || "#9b6fe0", links: [] });
+    }
+    map.get(brand)!.links.push({
+      label: cat.name,
+      sub:   cat.subtitle || "",
+      href:  `/collections/${encodeURIComponent(cat.name)}`,
+    });
+  });
+
+  return {
     featured: { title: "New Arrivals", subtitle: "Handcrafted with intention", accent: "#7c5cbf", tag: "Just In" },
-    sections: [
-      {
-        brand: "Nithyasoori", brandColor: "#9b6fe0",
-        links: [
-          { label: "Crystal Art Decor",    sub: "Wall & shelf pieces",    href: "/collections/product-1" },
-          { label: "Aura Trinket Trays",   sub: "Desk & vanity",          href: "/collections/aura-trinket-trays" },
-          { label: "Floating Flora Bowls", sub: "Botanical centerpieces", href: "/collections/floating-flora-bowls" },
-        ],
-      },
-      {
-        brand: "Enjem", brandColor: "#c084fc",
-        links: [
-          { label: "Crystal Bracelets", sub: "Healing & intention", href: "/collections/crystal-bracelets" },
-          { label: "Crystal Pendants",  sub: "Wearable energy",     href: "/collections/crystal-pendants" },
-        ],
-      },
-      {
-        brand: "Crystal Wisdom", brandColor: "#7b2fbf",
-        links: [
-          { label: "Chakra Connection", sub: "Alignment guides", href: "/collections/chakra-connection" },
-          { label: "Zodiac Alignment",  sub: "Star & stone",     href: "/collections/zodiac-alignment" },
-          { label: "Care & Cleanse",    sub: "Crystal rituals",  href: "/collections/care-cleanse" },
-        ],
-      },
-    ],
-  },
-  "SACRED SPACES": {
-    featured: { title: "Our Story", subtitle: "Rooted in crystal energy & artisan craft", accent: "#9b4dca", tag: "Est. 2019" },
-    sections: [
-      {
-        brand: "Connect", brandColor: "#7c5cbf",
-        links: [
-          { label: "About",   sub: "Who we are",               href: "/about-us" },
-          { label: "Artists", sub: "Stories from our Artists", href: "/artists" },
-          { label: "Contact", sub: "Reach out",                href: "/contact" },
-        ],
-      },
-    ],
-  },
-};
+    sections: Array.from(map.values()),
+  };
+}
 
-const NAV_ITEMS = [
-  { label: "HOME",          href: "/",            hasDropdown: false },
-  { label: "SACRED SPACES", href: "/about-us",    hasDropdown: true  },
-  { label: "COLLECTIONS",   href: "/collections", hasDropdown: true  },
-];
+// ── Static Sacred Spaces data ─────────────────────────────────────────────────
+const SACRED_DATA: DropData = {
+  featured: { title: "Our Story", subtitle: "Rooted in crystal energy & artisan craft", accent: "#9b4dca", tag: "Est. 2019" },
+  sections: [
+    {
+      brand: "Connect", brandColor: "#7c5cbf",
+      links: [
+        { label: "About",   sub: "Who we are",               href: "/about-us" },
+        { label: "Artists", sub: "Stories from our Artists", href: "/artists" },
+        { label: "Contact", sub: "Reach out",                href: "/contact" },
+      ],
+    },
+  ],
+};
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 const Logo = () => {
@@ -70,27 +74,18 @@ const Logo = () => {
     );
   }
   return (
-    <Image
-      src="/images/logo.jpeg"
-      alt="Empavai logo"
-      width={40}
-      height={40}
+    <Image src="/images/logo.jpeg" alt="Empavai logo" width={40} height={40}
       onError={() => setImgError(true)}
-      style={{ objectFit: "contain", height: 40, width: "auto" }}
-    />
+      style={{ objectFit: "contain", height: 40, width: "auto" }} />
   );
 };
 
-// ── DropLink ──────────────────────────────────────────────────────────────────
-interface LinkData { label: string; sub?: string; href: string }
-
-const DropLink = ({ link, accentColor }: { link: LinkData; accentColor: string }) => {
+// ── Single dropdown link ──────────────────────────────────────────────────────
+const DropLink = ({ link, accentColor }: { link: { label: string; sub: string; href: string }; accentColor: string }) => {
   const [hov, setHov] = useState(false);
   return (
-    <a
-      href={link.href}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+    <a href={link.href}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         display: "flex", flexDirection: "column", gap: 1,
         padding: "6px 10px", borderRadius: 7, textDecoration: "none",
@@ -112,15 +107,15 @@ const DropLink = ({ link, accentColor }: { link: LinkData; accentColor: string }
   );
 };
 
-// ── DropPanel ─────────────────────────────────────────────────────────────────
-type DropData = typeof DROPDOWN_DATA["COLLECTIONS"];
-
-const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boolean; alignRight: boolean }) => {
+// ── Dropdown panel ────────────────────────────────────────────────────────────
+const DropPanel = ({ data, visible, alignRight, viewAllHref }: {
+  data: DropData; visible: boolean; alignRight: boolean; viewAllHref: string;
+}) => {
   const [show, setShow] = useState(false);
   useEffect(() => {
     let raf: number;
-    if (visible) { raf = requestAnimationFrame(() => setShow(true)); }
-    else { setShow(false); }
+    if (visible) raf = requestAnimationFrame(() => setShow(true));
+    else setShow(false);
     return () => cancelAnimationFrame(raf);
   }, [visible]);
 
@@ -149,7 +144,7 @@ const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boo
         boxShadow: "-2px -2px 5px rgba(80,30,140,0.04)", zIndex: 1,
       }} />
 
-      {/* Panel */}
+      {/* Panel body */}
       <div style={{
         position: "relative", zIndex: 2,
         background: "rgba(250,248,255,0.98)",
@@ -158,7 +153,9 @@ const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boo
         boxShadow: "0 16px 48px rgba(50,15,100,0.14), 0 2px 8px rgba(50,15,100,0.06)",
         padding: "20px 18px 18px",
         display: "flex", gap: isMulti ? 20 : 0, alignItems: "flex-start",
+        maxHeight: "70vh", overflowY: "auto",
       }}>
+
         {/* Featured strip */}
         <div style={{
           flexShrink: 0, width: 148, paddingRight: 16,
@@ -172,17 +169,20 @@ const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boo
             color: data.featured.accent, background: `${data.featured.accent}15`,
             border: `1px solid ${data.featured.accent}2e`, borderRadius: 20, padding: "2.5px 9px",
           }}>{data.featured.tag}</span>
-          <p className={cormorant.className} style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.2, color: "#1e1030", margin: 0 }}>{data.featured.title}</p>
-          <p style={{ fontSize: 10.5, fontWeight: 300, lineHeight: 1.55, color: "#7a6a99", margin: 0 }}>{data.featured.subtitle}</p>
-          <a
-            href={data.sections[0]?.brand === "Connect" ? "/about-us" : "/collections"}
+          <p className={cormorant.className} style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.2, color: "#1e1030", margin: 0 }}>
+            {data.featured.title}
+          </p>
+          <p style={{ fontSize: 10.5, fontWeight: 300, lineHeight: 1.55, color: "#7a6a99", margin: 0 }}>
+            {data.featured.subtitle}
+          </p>
+          <a href={viewAllHref}
             style={{
               display: "inline-flex", alignItems: "center", gap: 5,
               fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
               color: data.featured.accent, textDecoration: "none", marginTop: 4, transition: "opacity 0.2s ease",
             }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = "0.7"; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
           >
             View All
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -195,17 +195,20 @@ const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boo
           </svg>
         </div>
 
-        {/* Link columns */}
-        <div style={{ display: "flex", gap: isMulti ? 16 : 0 }}>
+        {/* Brand columns */}
+        <div style={{ display: "flex", gap: isMulti ? 16 : 0, flexWrap: "wrap" }}>
           {data.sections.map((section, si) => (
             <div key={section.brand} style={{
-              minWidth: 140, opacity: show && visible ? 1 : 0,
+              minWidth: 140,
+              opacity: show && visible ? 1 : 0,
               transform: show && visible ? "translateY(0)" : "translateY(8px)",
               transition: `opacity 0.28s ease ${60 + si * 65}ms, transform 0.28s cubic-bezier(0.4,0,0.2,1) ${60 + si * 65}ms`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingLeft: 10 }}>
                 <span style={{ display: "block", width: 3, height: 11, borderRadius: 2, background: section.brandColor, flexShrink: 0 }} />
-                <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: section.brandColor }}>{section.brand}</span>
+                <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: section.brandColor }}>
+                  {section.brand}
+                </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {section.links.map(link => <DropLink key={link.label} link={link} accentColor={section.brandColor} />)}
@@ -218,16 +221,20 @@ const DropPanel = ({ data, visible, alignRight }: { data: DropData; visible: boo
   );
 };
 
-// ── NavItem ───────────────────────────────────────────────────────────────────
-const NavItem = ({ item, navHidden, openMenu, setOpenMenu }: {
-  item: typeof NAV_ITEMS[0];
+// ── Nav item ──────────────────────────────────────────────────────────────────
+interface NavItemDef { label: string; href: string; hasDropdown: boolean; }
+
+const NavItem = ({
+  item, navHidden, openMenu, setOpenMenu, dropData,
+}: {
+  item: NavItemDef;
   navHidden: boolean;
   openMenu: string | null;
   setOpenMenu: React.Dispatch<React.SetStateAction<string | null>>;
+  dropData: DropData | null;
 }) => {
-  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isOpen  = openMenu === item.label;
-  const dropData = DROPDOWN_DATA[item.label as keyof typeof DROPDOWN_DATA];
+  const timeout  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isOpen   = openMenu === item.label;
   const alignRight = item.label === "COLLECTIONS";
 
   const show = () => { if (timeout.current) clearTimeout(timeout.current); if (!navHidden && item.hasDropdown) setOpenMenu(item.label); };
@@ -237,12 +244,9 @@ const NavItem = ({ item, navHidden, openMenu, setOpenMenu }: {
 
   return (
     <div style={{ position: "relative" }} onMouseEnter={show} onMouseLeave={hide}>
-      <a
-        href={item.href}
-        className="empavai-navlink"
+      <a href={item.href} className="empavai-navlink"
         style={{ display: "flex", alignItems: "center", gap: 4, color: isOpen ? "#7c5cbf" : undefined }}
-        aria-haspopup={!!item.hasDropdown}
-        aria-expanded={item.hasDropdown ? isOpen : undefined}
+        aria-haspopup={!!item.hasDropdown} aria-expanded={item.hasDropdown ? isOpen : undefined}
       >
         {item.label}
         {item.hasDropdown && (
@@ -260,32 +264,58 @@ const NavItem = ({ item, navHidden, openMenu, setOpenMenu }: {
           transition: "width 0.26s cubic-bezier(0.4,0,0.2,1)",
         }} />
       )}
-      {item.hasDropdown && dropData && <DropPanel data={dropData} visible={isOpen} alignRight={alignRight} />}
+      {item.hasDropdown && dropData && (
+        <DropPanel data={dropData} visible={isOpen} alignRight={alignRight}
+          viewAllHref={item.label === "COLLECTIONS" ? "/collections" : "/about-us"} />
+      )}
     </div>
   );
 };
 
 // ── Main Navbar ───────────────────────────────────────────────────────────────
 export default function ElegantNavbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isHidden,   setIsHidden]   = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileExp,  setMobileExp]  = useState<string | null>(null);
-  const [openMenu,   setOpenMenu]   = useState<string | null>(null);
+  const [isScrolled,       setIsScrolled]       = useState(false);
+  const [isHidden,         setIsHidden]          = useState(false);
+  const [mobileOpen,       setMobileOpen]        = useState(false);
+  const [mobileExp,        setMobileExp]         = useState<string | null>(null);
+  const [openMenu,         setOpenMenu]          = useState<string | null>(null);
+  const [collectionsData,  setCollectionsData]   = useState<DropData>(buildCollectionsDropdown([]));
   const lastY = useRef(0);
 
+  // ── Fetch categories from API ─────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/api/categories`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setCollectionsData(buildCollectionsDropdown(data.data));
+        }
+      } catch (e) {
+        console.error("Navbar: failed to fetch categories", e);
+      }
+    })();
+  }, []);
+
+  // ── Scroll hide/show ──────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
       setIsScrolled(y > 40);
-      if (y < 10)                            { setIsHidden(false); }
+      if (y < 10)                                { setIsHidden(false); }
       else if (y > lastY.current + 6 && y > 100) { setIsHidden(true); setMobileOpen(false); setOpenMenu(null); }
-      else if (y < lastY.current - 6)        { setIsHidden(false); }
+      else if (y < lastY.current - 6)            { setIsHidden(false); }
       lastY.current = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const NAV_ITEMS: NavItemDef[] = [
+    { label: "HOME",          href: "/",            hasDropdown: false },
+    { label: "SACRED SPACES", href: "/about-us",    hasDropdown: true  },
+    { label: "COLLECTIONS",   href: "/collections", hasDropdown: true  },
+  ];
 
   return (
     <>
@@ -334,7 +364,7 @@ export default function ElegantNavbar() {
         .en-mob-link-label { font-size: 12.5px; font-weight: 400; color: #2e1f4a; }
         .en-mob-link-sub   { font-size: 10px;   font-weight: 300; color: #a090bb; }
         .en-mob-viewall {
-          display: flex; align-items: center; gap: 6px; padding: 8px 28px 12px;
+          display: flex; align-items: center; gap: 6px; padding: 8px 0 12px;
           font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
           color: #7c5cbf; text-decoration: none; transition: opacity 0.2s ease;
         }
@@ -349,19 +379,16 @@ export default function ElegantNavbar() {
         }
       `}</style>
 
-      <nav
-        aria-label="Main navigation"
-        style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 1060,
-          height: 64, display: "flex", alignItems: "center", padding: "0 40px",
-          background: "rgba(248,246,254,0.97)",
-          backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-          borderBottom: isScrolled ? "1px solid rgba(124,92,191,0.14)" : "1px solid rgba(124,92,191,0.07)",
-          boxShadow: isScrolled ? "0 4px 28px rgba(80,30,140,0.1)" : "none",
-          transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease",
-          transform: isHidden ? "translateY(-100%)" : "translateY(0)",
-        }}
-      >
+      <nav aria-label="Main navigation" style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1060,
+        height: 64, display: "flex", alignItems: "center", padding: "0 40px",
+        background: "rgba(248,246,254,0.97)",
+        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+        borderBottom: isScrolled ? "1px solid rgba(124,92,191,0.14)" : "1px solid rgba(124,92,191,0.07)",
+        boxShadow: isScrolled ? "0 4px 28px rgba(80,30,140,0.1)" : "none",
+        transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease",
+        transform: isHidden ? "translateY(-100%)" : "translateY(0)",
+      }}>
         {/* Logo */}
         <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
           <Logo />
@@ -383,7 +410,17 @@ export default function ElegantNavbar() {
           position: "absolute", left: "50%", transform: "translateX(-50%)",
         }}>
           {NAV_ITEMS.map(item => (
-            <NavItem key={item.label} item={item} navHidden={isHidden} openMenu={openMenu} setOpenMenu={setOpenMenu} />
+            <NavItem
+              key={item.label}
+              item={item}
+              navHidden={isHidden}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
+              dropData={
+                item.label === "COLLECTIONS"   ? collectionsData :
+                item.label === "SACRED SPACES" ? SACRED_DATA     : null
+              }
+            />
           ))}
         </div>
 
@@ -391,13 +428,9 @@ export default function ElegantNavbar() {
 
         <a href="/collections" className={`empavai-shopbtn empavai-deskshop ${jost.className}`}>SHOP NOW</a>
 
-        <button
-          className="en-ham"
-          onClick={() => setMobileOpen(v => !v)}
-          aria-label={mobileOpen ? "Close" : "Menu"}
-          aria-expanded={mobileOpen}
-        >
-          <span style={{ transform: mobileOpen ? "rotate(45deg) translate(5px,5px)"  : "none" }} />
+        <button className="en-ham" onClick={() => setMobileOpen(v => !v)}
+          aria-label={mobileOpen ? "Close" : "Menu"} aria-expanded={mobileOpen}>
+          <span style={{ transform: mobileOpen ? "rotate(45deg) translate(5px,5px)"   : "none" }} />
           <span style={{ opacity: mobileOpen ? 0 : 1 }} />
           <span style={{ transform: mobileOpen ? "rotate(-45deg) translate(5px,-5px)" : "none" }} />
         </button>
@@ -406,7 +439,8 @@ export default function ElegantNavbar() {
       {/* Mobile drawer */}
       <div className={`en-mob-drawer ${jost.className}${mobileOpen ? " open" : ""}`} aria-hidden={!mobileOpen}>
         {NAV_ITEMS.map(item => {
-          const dropData = DROPDOWN_DATA[item.label as keyof typeof DROPDOWN_DATA];
+          const dropData = item.label === "COLLECTIONS" ? collectionsData
+                         : item.label === "SACRED SPACES" ? SACRED_DATA : null;
           const expanded = mobileExp === item.label;
 
           if (!dropData) {
@@ -419,7 +453,9 @@ export default function ElegantNavbar() {
 
           return (
             <div key={item.label} className="en-mob-row">
-              <button className="en-mob-trigger" onClick={() => setMobileExp(expanded ? null : item.label)} aria-expanded={expanded}>
+              <button className="en-mob-trigger"
+                onClick={() => setMobileExp(expanded ? null : item.label)}
+                aria-expanded={expanded}>
                 {item.label}
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <polyline points={expanded ? "2,8 6,4 10,8" : "2,4 6,8 10,4"} />
@@ -453,7 +489,9 @@ export default function ElegantNavbar() {
           );
         })}
         <div style={{ padding: "16px 28px 8px" }}>
-          <a href="/collections" className="empavai-shopbtn" style={{ textAlign: "center", width: "100%", display: "block" }} onClick={() => setMobileOpen(false)}>
+          <a href="/collections" className="empavai-shopbtn"
+            style={{ textAlign: "center", width: "100%", display: "block" }}
+            onClick={() => setMobileOpen(false)}>
             SHOP NOW
           </a>
         </div>
