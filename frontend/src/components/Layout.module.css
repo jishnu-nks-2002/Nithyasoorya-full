@@ -180,3 +180,34 @@
   max-width: 1100px;
   animation: fadeIn 0.2s ease;
 }
+
+
+/* nav label text — needed so badge sits at the end */
+.navLabel2 {
+  flex: 1;
+}
+
+/* unread count pill on the Inquiries nav item */
+.unreadBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #6b3fa0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* make navItem a flex row so badge aligns right */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

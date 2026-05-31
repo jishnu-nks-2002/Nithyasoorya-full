@@ -7,17 +7,21 @@ const categorySchema = new mongoose.Schema(
   {
     name:        { type: String, required: true, unique: true, trim: true },
     slug:        { type: String, required: true, unique: true, lowercase: true, trim: true },
-    brand:       { type: String, default: '' },        // e.g. "Nithyasoori", "Enjem"
-    brandColor:  { type: String, default: '#9b6fe0' }, // hex accent shown in navbar
-    subtitle:    { type: String, default: '' },         // shown under link e.g. "Wall & shelf pieces"
+    brand:       { type: String, default: '' },
+    brandColor:  { type: String, default: '#9b6fe0' },
+    subtitle:    { type: String, default: '' },
     description: { type: String, default: '' },
-    order:       { type: Number, default: 0 },
-    isActive:    { type: Boolean, default: true },
+    image: {
+      url:      { type: String, default: '' },
+      publicId: { type: String, default: '' },
+      alt:      { type: String, default: '' },
+    },
+    order:    { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// Auto-generate slug from name
 categorySchema.pre('validate', function (next) {
   if (!this.slug && this.name) {
     this.slug = this.name
@@ -36,15 +40,13 @@ const Category = mongoose.model('Category', categorySchema);
 // ══════════════════════════════════════════════════════════════════
 const productSchema = new mongoose.Schema(
   {
-    // ── Identity ────────────────────────────────────────────────────
     name:        { type: String, required: true, trim: true },
     slug:        { type: String, required: true, unique: true, lowercase: true, trim: true },
-    category:    { type: String, required: true, trim: true }, // free string, no enum
+    category:    { type: String, required: true, trim: true },
     series:      { type: String, default: '' },
     material:    { type: String, default: '' },
     description: { type: String, default: '' },
 
-    // ── Pricing & availability ───────────────────────────────────────
     price:        { type: Number, required: true, default: 0 },
     priceDisplay: { type: String, default: '' },
     availability: {
@@ -56,7 +58,6 @@ const productSchema = new mongoose.Schema(
     isNew:      { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
 
-    // ── Media ────────────────────────────────────────────────────────
     images: [
       {
         url:       { type: String, required: true },
@@ -66,26 +67,21 @@ const productSchema = new mongoose.Schema(
       },
     ],
 
-    // ── Specs ────────────────────────────────────────────────────────
-    dimensions: { type: String, default: '' },
-    weight:     { type: String, default: '' },
-    stoneTypes: [{ type: String }],
-    beadSize:   { type: String, default: '' },
-    wristSize:  { type: String, default: '' },
-    tags:       [{ type: String }],
-
-    // ── Care & shipping ──────────────────────────────────────────────
+    dimensions:       { type: String, default: '' },
+    weight:           { type: String, default: '' },
+    stoneTypes:       [{ type: String }],
+    beadSize:         { type: String, default: '' },
+    wristSize:        { type: String, default: '' },
+    tags:             [{ type: String }],
     careInstructions: { type: String, default: '' },
     shippingInfo:     { type: String, default: '' },
 
-    // ── Order & visibility ───────────────────────────────────────────
     order:    { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// Auto-generate slug from name if not provided
 productSchema.pre('validate', function (next) {
   if (!this.slug && this.name) {
     this.slug = this.name
@@ -107,4 +103,36 @@ productSchema.set('toObject', { virtuals: true });
 const Product = mongoose.model('Product', productSchema);
 
 // ══════════════════════════════════════════════════════════════════
-module.exports = { Category, Product };
+//  ENQUIRY MODEL
+// ══════════════════════════════════════════════════════════════════
+const enquirySchema = new mongoose.Schema(
+  {
+    // Product snapshot at time of enquiry
+    productId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    productName:     { type: String, required: true },
+    productSlug:     { type: String, required: true },
+    productCategory: { type: String, default: '' },
+    productPrice:    { type: String, default: '' },
+
+    // Customer info
+    name:    { type: String, required: true, trim: true },
+    email:   { type: String, required: true, trim: true, lowercase: true },
+    phone:   { type: String, default: '', trim: true },
+    message: { type: String, default: '', trim: true },
+
+    // Status
+    status: {
+      type:    String,
+      enum:    ['New', 'Contacted', 'Closed'],
+      default: 'New',
+    },
+
+    source: { type: String, default: 'website' }, // 'website' | 'whatsapp'
+  },
+  { timestamps: true }
+);
+
+const Enquiry = mongoose.model('Enquiry', enquirySchema);
+
+// ══════════════════════════════════════════════════════════════════
+module.exports = { Category, Product, Enquiry };

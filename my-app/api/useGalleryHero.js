@@ -1,21 +1,23 @@
 // hooks/useGalleryHero.js
-// Drop this into your Next.js project and use it in your GalleryHero component.
-
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// Hardcode temporarily to confirm it works, then move back to env var
+const API_BASE = 'http://localhost:5000/api';
 
 export function useGalleryHero() {
-  const [data, setData] = useState(null);
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
+    const url = `${API_BASE}/gallery-hero`;
+    console.log('[useGalleryHero] fetching:', url); // 👈 confirm the URL in console
+
     axios
-      .get(`${API_URL}/gallery-hero`)
+      .get(url)
       .then((res) => setData(res.data.data))
-      .catch((err) => setError(err.message))
+      .catch((err) => setError('Failed to load hero: ' + err.message))
       .finally(() => setLoading(false));
   }, []);
 

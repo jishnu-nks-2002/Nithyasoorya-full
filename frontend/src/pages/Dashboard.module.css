@@ -76,3 +76,352 @@
 .slideInfo { flex: 1; min-width: 0; }
 .slideName { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slideMeta { margin-top: 2px; }
+/* ── CONTACTS SNAPSHOT ── */
+.contactsCard { margin-top: 20px; }
+
+.contactsLoading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: #9a8cb5;
+  font-size: 13px;
+}
+
+.unreadBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f3eeff;
+  border: 1px solid rgba(107, 63, 160, 0.15);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+}
+.unreadBannerText {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b3fa0;
+}
+
+/* Mini stats row */
+.contactStatsRow {
+  display: flex;
+  align-items: center;
+  background: #faf8ff;
+  border: 1px solid #ede8f8;
+  border-radius: 8px;
+  padding: 14px 24px;
+  margin-bottom: 16px;
+  gap: 0;
+}
+.contactStat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.contactStatValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1030;
+  line-height: 1;
+}
+.contactStatLabel {
+  font-size: 10.5px;
+  color: #b0a0cc;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.contactStatDivider {
+  width: 1px;
+  height: 32px;
+  background: #ede8f8;
+  margin: 0 8px;
+}
+
+/* Contact rows */
+.contactList { display: flex; flex-direction: column; }
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f0ff;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.contactRow:last-child { border-bottom: none; }
+.contactRow:hover { background: #faf8ff; }
+.contactRowUnread { border-left: 3px solid #6b3fa0; padding-left: 10px; }
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(107, 63, 160, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #6b3fa0;
+  flex-shrink: 0;
+}
+
+.contactInfo { flex: 1; min-width: 0; }
+.contactInfoTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.contactName     { font-size: 13px; color: #1a1030; }
+.contactNameBold { font-weight: 600; }
+.contactEmail {
+  font-size: 11.5px;
+  color: #9a8cb5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.unreadDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6b3fa0;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.contactRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.contactTypeBadge {
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b3fa0;
+  background: #f3eeff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.contactDate {
+  font-size: 10.5px;
+  color: #ccc;
+}
+
+/* Footer */
+.contactsFooter {
+  padding-top: 12px;
+  text-align: center;
+  border-top: 1px solid #f5f0ff;
+  margin-top: 4px;
+}
+.viewMoreBtn {
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  color: #6b3fa0;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.viewMoreBtn:hover { background: #f3eeff; }
+
+
+
+/* Section label — sits above the stones stats grid */
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7B4BA0;
+  margin: 28px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+ 
+.sectionLabel::before {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: #7B4BA0;
+  border-radius: 1px;
+}
+ 
+/* Category chips strip */
+.stoneCategories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--color-border, #e8e0f0);
+  margin-bottom: 4px;
+}
+ 
+.stoneCategoryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(123, 75, 160, 0.2);
+  background: rgba(123, 75, 160, 0.05);
+  font-size: 11.5px;
+  color: #4a3a6a;
+}
+ 
+.stoneCategoryDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7B4BA0;
+  flex-shrink: 0;
+}
+ 
+.stoneCategoryName {
+  font-weight: 500;
+}
+ 
+.stoneCategoryCount {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #7B4BA0;
+  background: rgba(123, 75, 160, 0.12);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+ 
+/* Stone rows list */
+.stoneList {
+  display: flex;
+  flex-direction: column;
+}
+ 
+.stoneRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--color-border, #f0eaf8);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.18s;
+}
+ 
+.stoneRow:last-child {
+  border-bottom: none;
+}
+ 
+.stoneRow:hover {
+  background: rgba(123, 75, 160, 0.04);
+}
+ 
+/* Thumbnail — colour swatch or image */
+.stoneThumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(123, 75, 160, 0.15);
+}
+ 
+.stoneThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+ 
+.stoneThumbInitial {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.85);
+}
+ 
+/* Info column */
+.stoneInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+ 
+.stoneInfoTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+ 
+.stoneName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text, #1e1030);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+ 
+.stoneFeaturedBadge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7B4BA0;
+  background: rgba(123, 75, 160, 0.1);
+  border: 1px solid rgba(123, 75, 160, 0.25);
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+ 
+.stoneMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+ 
+.stoneSubtitle {
+  font-size: 11.5px;
+  color: var(--text-muted, #9b82c4);
+  font-style: italic;
+}
+ 
+/* Right column */
+.stoneRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+ 
+.stoneEditHint {
+  font-size: 10.5px;
+  color: var(--text-muted, #c4b8e0);
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+ 
+.stoneRow:hover .stoneEditHint {
+  opacity: 1;
+}

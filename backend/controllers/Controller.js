@@ -1,4 +1,4 @@
-const { Product, Category } = require('../models/Models');
+const { Product, Category, Enquiry } = require('../models/Models');
 const cloudinary = require('../config/cloudinary');
 const { uploadToCloudinary } = require('../middleware/upload');
 
@@ -55,7 +55,7 @@ exports.getProductsAdmin = async (req, res) => {
   }
 };
 
-// GET /api/products/slug/:slug  (public, single)
+// GET /api/products/slug/:slug  (public)
 exports.getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug, isActive: true }).lean();
@@ -91,7 +91,7 @@ exports.createProduct = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
         const result = await uploadToCloudinary(req.files[i].buffer, {
-          folder:        `products/${category || 'products'}`,
+          folder: `products/${(category || 'general').trim().replace(/\s+/g, '-').toLowerCase()}`,
           resource_type: 'image',
         });
         images.push({
@@ -136,9 +136,9 @@ exports.updateProduct = async (req, res) => {
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     const fields = [
-      'name','slug','category','series','material','description',
-      'priceDisplay','availability','edition','dimensions','weight',
-      'beadSize','wristSize','careInstructions','shippingInfo',
+      'name', 'slug', 'category', 'series', 'material', 'description',
+      'priceDisplay', 'availability', 'edition', 'dimensions', 'weight',
+      'beadSize', 'wristSize', 'careInstructions', 'shippingInfo',
     ];
     fields.forEach((f) => { if (req.body[f] !== undefined) product[f] = req.body[f]; });
 
@@ -153,7 +153,7 @@ exports.updateProduct = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const result = await uploadToCloudinary(file.buffer, {
-          folder:        `products/${product.category}`,
+          folder: `products/${(product.category || 'general').trim().replace(/\s+/g, '-').toLowerCase()}`,
           resource_type: 'image',
         });
         product.images.push({
@@ -320,6 +320,20 @@ exports.createCategory = async (req, res) => {
 
     if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
 
+    // ── Upload category image if provided ──────────────────────────────────
+    let image = { url: '', publicId: '', alt: '' };
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder: 'categories',
+        resource_type: 'image',
+      });
+      image = {
+        url:      result.secure_url,
+        publicId: result.public_id,
+        alt:      name,
+      };
+    }
+
     const category = await Category.create({
       name,
       slug:        slug        || '',
@@ -327,7 +341,8 @@ exports.createCategory = async (req, res) => {
       brandColor:  brandColor  || '#9b6fe0',
       subtitle:    subtitle    || '',
       description: description || '',
-      order:       Number(order) || 0,
+      image,
+      order: Number(order) || 0,
     });
 
     res.status(201).json({ success: true, data: category, message: 'Category created' });
@@ -353,9 +368,31 @@ exports.updateCategory = async (req, res) => {
     if (req.body.isActive !== undefined)
       category.isActive = req.body.isActive === 'true' || req.body.isActive === true;
 
+    // ── Replace category image if a new file is uploaded ──────────────────
+    if (req.file) {
+      // Delete old image from Cloudinary first
+      if (category.image?.publicId) {
+        await cloudinary.uploader.destroy(category.image.publicId).catch(console.error);
+      }
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder: 'categories',
+        resource_type: 'image',
+      });
+      category.image = {
+        url:      result.secure_url,
+        publicId: result.public_id,
+        alt:      category.name || req.body.name || '',
+      };
+    }
+
+    // ── Allow explicit image removal via removeImage flag ──────────────────
+    if (req.body.removeImage === 'true' && category.image?.publicId) {
+      await cloudinary.uploader.destroy(category.image.publicId).catch(console.error);
+      category.image = { url: '', publicId: '', alt: '' };
+    }
+
     await category.save();
 
-    // Cascade-rename on all products if name changed
     if (req.body.name && req.body.name !== oldName) {
       await Product.updateMany({ category: oldName }, { $set: { category: req.body.name } });
     }
@@ -383,6 +420,11 @@ exports.deleteCategory = async (req, res) => {
       });
     }
 
+    // ── Delete category image from Cloudinary ──────────────────────────────
+    if (category.image?.publicId) {
+      await cloudinary.uploader.destroy(category.image.publicId).catch(console.error);
+    }
+
     await category.deleteOne();
     res.json({ success: true, message: 'Category deleted' });
   } catch (err) {
@@ -401,6 +443,82 @@ exports.reorderCategories = async (req, res) => {
       orderedIds.map((id, index) => Category.findByIdAndUpdate(id, { order: index }))
     );
     res.json({ success: true, message: 'Categories reordered' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ENQUIRY CONTROLLERS
+// ════════════════════════════════════════════════════════════════════════════
+
+// POST /api/enquiries  (public — customer submits form)
+exports.createEnquiry = async (req, res) => {
+  try {
+    const {
+      productId, productName, productSlug, productCategory, productPrice,
+      name, email, phone, message,
+    } = req.body;
+
+    if (!productId)     return res.status(400).json({ success: false, message: 'productId is required' });
+    if (!name?.trim())  return res.status(400).json({ success: false, message: 'Your name is required' });
+    if (!email?.trim()) return res.status(400).json({ success: false, message: 'Your email is required' });
+
+    const enquiry = await Enquiry.create({
+      productId, productName, productSlug, productCategory, productPrice,
+      name:    name.trim(),
+      email:   email.trim(),
+      phone:   phone?.trim()   || '',
+      message: message?.trim() || '',
+      source:  'website',
+    });
+
+    res.status(201).json({ success: true, data: enquiry, message: 'Enquiry submitted successfully' });
+  } catch (err) {
+    console.error('createEnquiry:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+};
+
+// GET /api/enquiries  (admin)
+exports.getEnquiries = async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.status)    filter.status    = req.query.status;
+    if (req.query.productId) filter.productId = req.query.productId;
+
+    const enquiries = await Enquiry.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({ success: true, count: enquiries.length, data: enquiries });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// PUT /api/enquiries/:id/status  (admin)
+exports.updateEnquiryStatus = async (req, res) => {
+  try {
+    const enquiry = await Enquiry.findById(req.params.id);
+    if (!enquiry) return res.status(404).json({ success: false, message: 'Enquiry not found' });
+
+    const { status } = req.body;
+    if (!['New', 'Contacted', 'Closed'].includes(status))
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+
+    enquiry.status = status;
+    await enquiry.save();
+    res.json({ success: true, data: enquiry, message: 'Status updated' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// DELETE /api/enquiries/:id  (admin)
+exports.deleteEnquiry = async (req, res) => {
+  try {
+    const enquiry = await Enquiry.findById(req.params.id);
+    if (!enquiry) return res.status(404).json({ success: false, message: 'Enquiry not found' });
+    await enquiry.deleteOne();
+    res.json({ success: true, message: 'Enquiry deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }

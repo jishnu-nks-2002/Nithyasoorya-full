@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// FIX 1: Fall back to the actual backend port, not empty string.
+// Empty string sends requests to the Vite dev server (port 5173), not Express (port 5000).
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
 });
 
 // Attach JWT token to every request

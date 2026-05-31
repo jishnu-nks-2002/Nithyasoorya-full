@@ -15,7 +15,7 @@ import Footer from '@/component/Footer';
 import CustomCursor from '@/component/Customcursor';
 import FlowingMenu from '@/component/Flowingmenu';
 import CuratedSection from '@/component/CuratedSection';
-import GallerySection from '@/component/Gallerysection';
+import Empavaidomegallery  from '@/component/Empavaidomegallery';
 import { useGalleryHero } from '../../api/useGalleryHero';
 
 
@@ -63,7 +63,7 @@ const App: React.FC = () => {
         
 
         {/* <InfinityScrollGallery /> */}
-        <GallerySection />
+        <Empavaidomegallery  />
         
        
 

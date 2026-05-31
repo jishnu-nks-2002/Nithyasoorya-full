@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Jost, Cormorant_Garamond } from "next/font/google";
 import Image from "next/image";
+import axios from "axios";
 
 const jost = Jost({ weight: ["300", "400", "500", "600"], subsets: ["latin"], display: "swap" });
 const cormorant = Cormorant_Garamond({
@@ -13,7 +14,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 const studios = [
-  { city: "KERALA STUDIO",  address: "Thrissur, Kerala", postal: "India — 680 001",  mapHref: "#" },
+  { city: "KERALA STUDIO",  address: "Thrissur, Kerala", postal: "India — 680 001", mapHref: "#" },
   { city: "ONLINE ATELIER", address: "Worldwide Shipping", postal: "empavai.com",    mapHref: "#" },
 ];
 
@@ -66,10 +67,22 @@ export default function ConnectSection() {
   const [form, setForm] = useState<FormState>({ name: "", email: "", type: "Art Acquisition", message: "" });
   const [focused, setFocused] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectOpen, setSelectOpen] = useState(false);
 
-  const handleSubmit = () => {
-    if (form.name && form.email) setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!form.name || !form.email) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, form);
+      setSubmitted(true);
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const borderFor = (key: string) =>
@@ -224,6 +237,8 @@ export default function ConnectSection() {
         .cs-submit:hover { background: #5a3188; box-shadow: 0 8px 28px rgba(107,63,160,0.4); transform: translateY(-1px); }
         .cs-submit:disabled { background: #c0b0d8; box-shadow: none; cursor: not-allowed; transform: none; }
 
+        .cs-error { font-size: 11px; color: #c0392b; text-align: right; margin-top: -8px; }
+
         .cs-success {
           display: flex; flex-direction: column; align-items: center;
           text-align: center; padding: 40px 24px; gap: 14px;
@@ -249,22 +264,19 @@ export default function ConnectSection() {
 
       <div className={`cs-root ${jost.className}`}>
 
-        {/* ── HERO ── */}
+        {/* HERO */}
         <div className="cs-hero">
           <div className="cs-hero-left">
             <div className="cs-eyebrow">
               <div className="cs-eyebrow-line" />
               <span className="cs-eyebrow-text">Inquiries &amp; Access</span>
             </div>
-
             <h1 className={`cs-heading ${cormorant.className}`}>
               Connect with<br />the <em>Studio.</em>
             </h1>
-
             <p className="cs-subtext">
               For collectors, collaborators, and the curious. Our studio welcomes dialogues on sculptural artistry and bespoke commissions.
             </p>
-
             <div className="cs-studios">
               {studios.map(s => (
                 <div key={s.city}>
@@ -295,9 +307,8 @@ export default function ConnectSection() {
           </div>
         </div>
 
-        {/* ── LOWER ── */}
+        {/* LOWER */}
         <div className="cs-lower">
-
           <div className="cs-commission">
             <h2 className={`cs-section-title ${cormorant.className}`}>Bespoke Commissions</h2>
             <p className="cs-section-body">
@@ -333,7 +344,6 @@ export default function ConnectSection() {
               </div>
             ) : (
               <div className="cs-form">
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   {(["name", "email"] as const).map(key => (
                     <div key={key} className="cs-field">
@@ -399,15 +409,19 @@ export default function ConnectSection() {
                   />
                 </div>
 
+                {error && <p className="cs-error">{error}</p>}
+
                 <button
                   className={`cs-submit ${jost.className}`}
                   onClick={handleSubmit}
-                  disabled={!form.name || !form.email}
+                  disabled={!form.name || !form.email || loading}
                 >
-                  Submit Inquiry
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                  </svg>
+                  {loading ? "Sending..." : "Submit Inquiry"}
+                  {!loading && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  )}
                 </button>
               </div>
             )}

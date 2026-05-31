@@ -14,59 +14,102 @@ interface Category {
   _id: string; name: string; slug: string;
   brand: string; brandColor: string; subtitle: string; order: number;
 }
-
-interface BrandSection {
-  brand: string; brandColor: string;
-  links: { label: string; sub: string; href: string }[];
+interface ProductImage { url: string; alt: string; isPrimary: boolean; }
+interface Product {
+  _id: string; name: string; slug: string; category: string;
+  series: string; priceDisplay: string; price: number;
+  isNew: boolean; availability: string;
+  images: ProductImage[];
 }
-
+interface Stone {
+  _id: string; name: string; slug: string;
+  subtitle?: string; tagline?: string; isActive?: boolean;
+}
+interface StoneLink { label: string; sub: string; href: string; }
+interface CategoryColumn {
+  name: string; slug: string; subtitle: string; color: string;
+  products: { name: string; slug: string; isNew: boolean }[];
+}
 interface DropData {
   featured: { title: string; subtitle: string; accent: string; tag: string };
-  sections: BrandSection[];
+  columns: CategoryColumn[];
 }
 
-// ── Group flat category list into brand columns ───────────────────────────────
-function buildCollectionsDropdown(categories: Category[]): DropData {
-  const map = new Map<string, BrandSection>();
-  categories.forEach((cat) => {
-    const brand = cat.brand?.trim() || "Collections";
-    if (!map.has(brand)) {
-      map.set(brand, { brand, brandColor: cat.brandColor || "#9b6fe0", links: [] });
-    }
-    map.get(brand)!.links.push({
-      label: cat.name,
-      sub:   cat.subtitle || "",
-      href:  `/collections/${encodeURIComponent(cat.name)}`,
+// ── Build dropdown data ────────────────────────────────────────────────────────
+function buildDropData(categories: Category[], products: Product[]): DropData {
+  const byCategory = products.reduce((acc, p) => {
+    const key = p.category || "Uncategorized";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(p);
+    return acc;
+  }, {} as Record<string, Product[]>);
+
+  let columns: CategoryColumn[] = [];
+  if (categories.length > 0) {
+    columns = categories.map((cat) => ({
+      name: cat.name, slug: cat.slug || cat.name,
+      subtitle: cat.subtitle || `Browse ${cat.name}`,
+      color: cat.brandColor || "#7c5cbf",
+      products: (byCategory[cat.name] || []).slice(0, 6).map((p) => ({
+        name: p.name, slug: p.slug, isNew: p.isNew,
+      })),
+    }));
+  } else {
+    const seen = new Set<string>();
+    products.forEach((p) => {
+      if (!seen.has(p.category)) {
+        seen.add(p.category);
+        columns.push({ name: p.category, slug: p.category, subtitle: `Browse ${p.category}`, color: "#7c5cbf", products: [] });
+      }
+      const col = columns.find((c) => c.name === p.category);
+      if (col && col.products.length < 6)
+        col.products.push({ name: p.name, slug: p.slug, isNew: p.isNew });
     });
-  });
+  }
 
   return {
     featured: { title: "New Arrivals", subtitle: "Handcrafted with intention", accent: "#7c5cbf", tag: "Just In" },
-    sections: Array.from(map.values()),
+    columns,
   };
 }
 
-// ── Static Sacred Spaces data ─────────────────────────────────────────────────
-const SACRED_DATA: DropData = {
-  featured: { title: "Our Story", subtitle: "Rooted in crystal energy & artisan craft", accent: "#9b4dca", tag: "Est. 2019" },
-  sections: [
-    {
-      brand: "Connect", brandColor: "#7c5cbf",
-      links: [
-        { label: "About",   sub: "Who we are",               href: "/about-us" },
-        { label: "Artists", sub: "Stories from our Artists", href: "/artists" },
-        { label: "Contact", sub: "Reach out",                href: "/contact" },
-      ],
-    },
-  ],
-};
+// ── Build stone links ─────────────────────────────────────────────────────────
+function buildStoneLinks(stones: Stone[]): StoneLink[] {
+  const fallback: StoneLink[] = [
+    { label: "All Stones",       sub: "Browse the full collection",  href: "/stones"                  },
+    { label: "Black Tourmaline", sub: "Protection & Grounding",      href: "/stones/black-tourmaline" },
+    { label: "Amethyst",         sub: "Spirituality & Clarity",      href: "/stones/amethyst"         },
+    { label: "Rose Quartz",      sub: "Love & Emotional Healing",    href: "/stones/rose-quartz"      },
+    { label: "Selenite",         sub: "Cleansing & Light",           href: "/stones/selenite"         },
+    { label: "Citrine",          sub: "Abundance & Manifestation",   href: "/stones/citrine"          },
+  ];
+  if (!stones || stones.length === 0) return fallback;
+  return [
+    { label: "All Stones", sub: "Browse the full collection", href: "/stones" },
+    ...stones
+      .filter(s => s.isActive !== false)
+      .slice(0, 8)
+      .map(s => ({
+        label: s.name,
+        sub:   s.subtitle || s.tagline || `Explore ${s.name}`,
+        href:  `/stones/${s.slug}`,
+      })),
+  ];
+}
+
+// ── Sacred Spaces links ───────────────────────────────────────────────────────
+const SACRED_LINKS = [
+  { label: "About",   sub: "Who we are",               href: "/about-us" },
+  { label: "Artists", sub: "Stories from our Artists", href: "/artists"  },
+  { label: "Contact", sub: "Reach out",                href: "/contact"  },
+];
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 const Logo = () => {
   const [imgError, setImgError] = useState(false);
   if (imgError) {
     return (
-      <svg width="36" height="36" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <svg width="36" height="36" viewBox="0 0 28 28" fill="none">
         <polygon points="14,2 26,14 14,26 2,14" fill="none" stroke="#7c5cbf" strokeWidth="1.8" />
         <polygon points="14,6 22,14 14,22 6,14" fill="none" stroke="#7c5cbf" strokeWidth="1" opacity="0.4" />
         <circle cx="14" cy="14" r="2" fill="#7c5cbf" opacity="0.7" />
@@ -80,8 +123,44 @@ const Logo = () => {
   );
 };
 
-// ── Single dropdown link ──────────────────────────────────────────────────────
-const DropLink = ({ link, accentColor }: { link: { label: string; sub: string; href: string }; accentColor: string }) => {
+// ── Product link ──────────────────────────────────────────────────────────────
+const ProductLink = ({ prod, color }: {
+  prod: { name: string; slug: string; isNew: boolean };
+  color: string;
+}) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <a
+      href={`/product/${prod.slug}`}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "7px 10px", borderRadius: 6, textDecoration: "none",
+        background: hov ? `${color}0d` : "transparent",
+        borderLeft: `2px solid ${hov ? color : "transparent"}`,
+        transform: hov ? "translateX(2px)" : "translateX(0)",
+        transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)",
+      }}
+    >
+      <span style={{
+        fontSize: 13, fontWeight: hov ? 500 : 400,
+        color: hov ? color : "#4a3a6a", lineHeight: 1.3,
+        transition: "color 0.18s ease",
+      }}>{prod.name}</span>
+      {prod.isNew && (
+        <span style={{
+          flexShrink: 0, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.14em",
+          textTransform: "uppercase", color: "#fff", background: color,
+          padding: "2px 6px", borderRadius: 8,
+        }}>NEW</span>
+      )}
+    </a>
+  );
+};
+
+// ── Sacred link row ───────────────────────────────────────────────────────────
+const SacredLinkRow = ({ link }: { link: StoneLink }) => {
   const [hov, setHov] = useState(false);
   return (
     <a href={link.href}
@@ -89,28 +168,223 @@ const DropLink = ({ link, accentColor }: { link: { label: string; sub: string; h
       style={{
         display: "flex", flexDirection: "column", gap: 1,
         padding: "6px 10px", borderRadius: 7, textDecoration: "none",
-        borderLeft: `2px solid ${hov ? accentColor : "transparent"}`,
-        background: hov ? `${accentColor}0d` : "transparent",
+        borderLeft: `2px solid ${hov ? "#9b4dca" : "transparent"}`,
+        background: hov ? "#9b4dca0d" : "transparent",
         transform: hov ? "translateX(3px)" : "translateX(0)",
-        transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)", whiteSpace: "nowrap",
-      }}
-    >
-      <span style={{ fontSize: 12.5, fontWeight: hov ? 500 : 400, color: hov ? accentColor : "#2e1f4a", transition: "color 0.2s ease", letterSpacing: "0.01em" }}>
+        transition: "all 0.2s ease",
+      }}>
+      <span style={{ fontSize: 12.5, fontWeight: hov ? 500 : 400, color: hov ? "#9b4dca" : "#2e1f4a", transition: "color 0.2s" }}>
         {link.label}
       </span>
-      {link.sub && (
-        <span style={{ fontSize: 10, fontWeight: 300, color: hov ? `${accentColor}99` : "#a090bb", transition: "color 0.2s ease" }}>
-          {link.sub}
-        </span>
-      )}
+      <span style={{ fontSize: 10, fontWeight: 300, color: "#a090bb" }}>{link.sub}</span>
     </a>
   );
 };
 
-// ── Dropdown panel ────────────────────────────────────────────────────────────
-const DropPanel = ({ data, visible, alignRight, viewAllHref }: {
-  data: DropData; visible: boolean; alignRight: boolean; viewAllHref: string;
+// ── Stone link row ────────────────────────────────────────────────────────────
+const StoneLinkRow = ({ link }: { link: StoneLink }) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <a href={link.href}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        display: "flex", flexDirection: "column", gap: 1,
+        padding: "6px 10px", borderRadius: 7, textDecoration: "none",
+        borderLeft: `2px solid ${hov ? "#7B4BA0" : "transparent"}`,
+        background: hov ? "#7B4BA00d" : "transparent",
+        transform: hov ? "translateX(3px)" : "translateX(0)",
+        transition: "all 0.2s ease",
+      }}>
+      <span style={{ fontSize: 12.5, fontWeight: hov ? 500 : 400, color: hov ? "#7B4BA0" : "#2e1f4a", transition: "color 0.2s" }}>
+        {link.label}
+      </span>
+      <span style={{ fontSize: 10, fontWeight: 300, color: "#a090bb" }}>{link.sub}</span>
+    </a>
+  );
+};
+
+// ── Collections mega-dropdown ─────────────────────────────────────────────────
+// KEY FIX: render inside the nav's stacking context using absolute positioning
+// relative to the nav bar itself (not fixed/viewport), then clamp so it
+// never bleeds off the right edge.
+const CollectionsPanel = ({ data, visible, anchorRef }: {
+  data: DropData;
+  visible: boolean;
+  anchorRef: React.RefObject<HTMLDivElement>;
 }) => {
+  const [show,    setShow]    = useState(false);
+  const [offsetX, setOffsetX] = useState(0);   // left offset relative to anchor
+  const [caretX,  setCaretX]  = useState(0);   // caret position inside panel
+  const panelW = 760;
+
+  // Recalculate so panel stays inside the viewport while caret stays over trigger
+  useEffect(() => {
+    if (!visible || !anchorRef.current) return;
+
+    const anchorRect  = anchorRef.current.getBoundingClientRect();
+    const anchorCx    = anchorRect.left + anchorRect.width / 2;  // trigger centre (viewport)
+
+    // Ideal: centre the panel on the trigger
+    const idealLeft   = anchorCx - panelW / 2;
+
+    // Clamp: 16 px from left edge, 16 px from right edge
+    const maxLeft     = window.innerWidth - panelW - 16;
+    const clampedLeft = Math.max(16, Math.min(idealLeft, maxLeft));
+
+    // How far is the panel's left edge from the anchor's left edge?
+    const relLeft     = clampedLeft - anchorRect.left;
+    setOffsetX(relLeft);
+
+    // Caret sits at anchorCx inside the panel
+    setCaretX(anchorCx - clampedLeft - 6);
+
+  }, [visible, anchorRef]);
+
+  useEffect(() => {
+    let raf: number;
+    if (visible) raf = requestAnimationFrame(() => setShow(true));
+    else setShow(false);
+    return () => cancelAnimationFrame(raf);
+  }, [visible]);
+
+  return (
+    // Positioned relative to the anchor <div> inside the nav
+    <div
+      style={{
+        position: "absolute",
+        // sit just below the nav bar: anchor is inside nav (height 64px),
+        // anchor itself has some height; calc from anchor bottom
+        top: "calc(100% + 14px)",
+        left: offsetX,
+        width: panelW,
+        zIndex: 1100,
+        pointerEvents: visible ? "auto" : "none",
+        opacity: show && visible ? 1 : 0,
+        transform: show && visible ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)",
+        transformOrigin: "top center",
+        transition: "opacity 0.24s ease, transform 0.26s cubic-bezier(0.4,0,0.2,1)",
+      }}
+    >
+      {/* Caret — always points at the trigger */}
+      <div style={{
+        position: "absolute",
+        top: -6,
+        left: Math.max(12, Math.min(caretX, panelW - 24)),
+        width: 12, height: 12,
+        background: "rgba(250,248,255,0.98)",
+        border: "1px solid rgba(124,92,191,0.13)",
+        borderBottom: "none", borderRight: "none",
+        transform: "rotate(45deg)",
+        zIndex: 1,
+      }} />
+
+      <div style={{
+        position: "relative", zIndex: 2,
+        background: "rgba(250,248,255,0.98)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(124,92,191,0.13)", borderRadius: 16,
+        boxShadow: "0 20px 60px rgba(50,15,100,0.16), 0 2px 8px rgba(50,15,100,0.06)",
+        padding: "28px 24px 22px",
+        display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 0,
+        overflow: "hidden",
+      }}>
+        {/* Featured panel */}
+        <div style={{
+          flexShrink: 0, width: 180, paddingRight: 20, marginRight: 4,
+          borderRight: "1px solid rgba(124,92,191,0.12)",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          <span style={{
+            display: "inline-block", alignSelf: "flex-start",
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
+            color: data.featured.accent, background: `${data.featured.accent}15`,
+            border: `1px solid ${data.featured.accent}2e`, borderRadius: 20, padding: "3px 10px",
+          }}>{data.featured.tag}</span>
+          <p className={cormorant.className} style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.2, color: "#1e1030", margin: 0 }}>
+            {data.featured.title}
+          </p>
+          <p style={{ fontSize: 12, fontWeight: 300, lineHeight: 1.6, color: "#7a6a99", margin: 0 }}>
+            {data.featured.subtitle}
+          </p>
+          <a href="/collections" style={{
+            display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6,
+            fontSize: 10, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase",
+            color: data.featured.accent, textDecoration: "none",
+          }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+          >
+            View All
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </a>
+          <svg width="32" height="32" viewBox="0 0 28 28" fill="none" style={{ opacity: 0.12, marginTop: 6 }}>
+            <polygon points="14,1 27,14 14,27 1,14" fill="#7c5cbf" />
+            <polygon points="14,6 22,14 14,22 6,14" fill="#c084fc" />
+          </svg>
+        </div>
+
+        {/* Category columns */}
+        <div
+          className="empavai-col-scroll"
+          style={{
+            display: "flex", flexDirection: "row", alignItems: "flex-start",
+            flexWrap: "nowrap", overflowX: "auto", gap: 0, flex: 1,
+            scrollbarWidth: "none", msOverflowStyle: "none",
+          }}
+        >
+          {data.columns.map((col, ci) => (
+            <div key={col.name} style={{
+              display: "flex", flexDirection: "column",
+              minWidth: 170, paddingLeft: 18, paddingRight: 18,
+              borderRight: ci < data.columns.length - 1 ? "1px solid rgba(124,92,191,0.09)" : "none",
+              opacity: show && visible ? 1 : 0,
+              transform: show && visible ? "translateY(0)" : "translateY(8px)",
+              transition: `opacity 0.28s ease ${50 + ci * 55}ms, transform 0.28s cubic-bezier(0.4,0,0.2,1) ${50 + ci * 55}ms`,
+            }}>
+              <a href={`/collections/${encodeURIComponent(col.name)}`} style={{
+                display: "flex", alignItems: "flex-start", gap: 8,
+                textDecoration: "none", marginBottom: 10, paddingBottom: 10,
+                borderBottom: `1px solid ${col.color}22`,
+              }}>
+                <span style={{ display: "block", width: 3, height: 32, borderRadius: 2, background: col.color, flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: "#1e1030", whiteSpace: "nowrap" }}>{col.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 300, color: "#a090bb", marginTop: 3 }}>{col.subtitle}</div>
+                </div>
+              </a>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {col.products.map((prod) => (
+                  <ProductLink key={prod.slug} prod={prod} color={col.color} />
+                ))}
+              </div>
+              <a href={`/collections/${encodeURIComponent(col.name)}`} style={{
+                display: "inline-flex", alignItems: "center", gap: 4, marginTop: 12,
+                fontSize: 9.5, fontWeight: 600, letterSpacing: "0.16em", textTransform: "uppercase",
+                color: col.color, textDecoration: "none", opacity: 0.65, transition: "opacity 0.2s ease",
+              }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "0.65")}
+              >
+                See all
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          ))}
+          {data.columns.length === 0 && (
+            <div style={{ padding: "8px 24px", color: "#9a8cb5", fontSize: 13 }}>No collections yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Sacred Spaces dropdown ────────────────────────────────────────────────────
+const SacredPanel = ({ visible }: { visible: boolean }) => {
   const [show, setShow] = useState(false);
   useEffect(() => {
     let raf: number;
@@ -119,102 +393,85 @@ const DropPanel = ({ data, visible, alignRight, viewAllHref }: {
     return () => cancelAnimationFrame(raf);
   }, [visible]);
 
-  const isMulti = data.sections.length > 1;
+  return (
+    <div style={{
+      position: "absolute", top: "calc(100% + 14px)", left: "50%",
+      transform: show && visible ? "translateX(-50%) translateY(0) scale(1)" : "translateX(-50%) translateY(-8px) scale(0.98)",
+      zIndex: 1100, pointerEvents: visible ? "auto" : "none",
+      opacity: show && visible ? 1 : 0, transformOrigin: "top center",
+      transition: "opacity 0.24s ease, transform 0.26s cubic-bezier(0.4,0,0.2,1)",
+    }}>
+      <div style={{
+        position: "absolute", top: -6, left: "50%", marginLeft: -6, width: 12, height: 12,
+        background: "rgba(250,248,255,0.98)",
+        border: "1px solid rgba(124,92,191,0.13)", borderBottom: "none", borderRight: "none",
+        transform: "rotate(45deg)", zIndex: 1,
+      }} />
+      <div style={{
+        position: "relative", zIndex: 2, background: "rgba(250,248,255,0.98)",
+        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(124,92,191,0.13)", borderRadius: 14,
+        boxShadow: "0 16px 48px rgba(50,15,100,0.14)", padding: "16px 12px", minWidth: 210,
+      }}>
+        <div style={{ paddingLeft: 10, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ display: "block", width: 3, height: 10, borderRadius: 2, background: "#9b4dca", flexShrink: 0 }} />
+          <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9b4dca" }}>Connect</span>
+        </div>
+        {SACRED_LINKS.map(link => <SacredLinkRow key={link.href} link={link} />)}
+      </div>
+    </div>
+  );
+};
+
+// ── Stones dropdown ────────────────────────────────────────────────────────────
+const StonesPanel = ({ visible, stoneLinks }: { visible: boolean; stoneLinks: StoneLink[] }) => {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    let raf: number;
+    if (visible) raf = requestAnimationFrame(() => setShow(true));
+    else setShow(false);
+    return () => cancelAnimationFrame(raf);
+  }, [visible]);
 
   return (
     <div style={{
-      position: "absolute", top: "calc(100% + 14px)",
-      ...(alignRight ? { right: 0 } : { left: 0 }),
+      position: "absolute", top: "calc(100% + 14px)", left: "50%",
+      transform: show && visible ? "translateX(-50%) translateY(0) scale(1)" : "translateX(-50%) translateY(-8px) scale(0.98)",
       zIndex: 1100, pointerEvents: visible ? "auto" : "none",
-      opacity: show && visible ? 1 : 0,
-      transform: show && visible ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.98)",
-      transformOrigin: alignRight ? "top right" : "top left",
+      opacity: show && visible ? 1 : 0, transformOrigin: "top center",
       transition: "opacity 0.24s ease, transform 0.26s cubic-bezier(0.4,0,0.2,1)",
-    }} aria-hidden={!visible}>
-
-      {/* Caret */}
+    }}>
       <div style={{
-        position: "absolute", top: -6,
-        ...(alignRight ? { right: 18 } : { left: 18 }),
-        width: 12, height: 12,
+        position: "absolute", top: -6, left: "50%", marginLeft: -6, width: 12, height: 12,
         background: "rgba(250,248,255,0.98)",
-        border: "1px solid rgba(124,92,191,0.13)",
-        borderBottom: "none", borderRight: "none",
-        transform: "rotate(45deg)",
-        boxShadow: "-2px -2px 5px rgba(80,30,140,0.04)", zIndex: 1,
+        border: "1px solid rgba(124,92,191,0.13)", borderBottom: "none", borderRight: "none",
+        transform: "rotate(45deg)", zIndex: 1,
       }} />
-
-      {/* Panel body */}
       <div style={{
-        position: "relative", zIndex: 2,
-        background: "rgba(250,248,255,0.98)",
+        position: "relative", zIndex: 2, background: "rgba(250,248,255,0.98)",
         backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
         border: "1px solid rgba(124,92,191,0.13)", borderRadius: 14,
-        boxShadow: "0 16px 48px rgba(50,15,100,0.14), 0 2px 8px rgba(50,15,100,0.06)",
-        padding: "20px 18px 18px",
-        display: "flex", gap: isMulti ? 20 : 0, alignItems: "flex-start",
-        maxHeight: "70vh", overflowY: "auto",
+        boxShadow: "0 16px 48px rgba(50,15,100,0.14)", padding: "16px 12px", minWidth: 240,
       }}>
-
-        {/* Featured strip */}
-        <div style={{
-          flexShrink: 0, width: 148, paddingRight: 16,
-          borderRight: "1px solid rgba(124,92,191,0.11)",
-          marginRight: isMulti ? 4 : 8,
-          display: "flex", flexDirection: "column", gap: 8, paddingTop: 2,
-        }}>
-          <span style={{
-            display: "inline-block", alignSelf: "flex-start",
-            fontSize: 8.5, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
-            color: data.featured.accent, background: `${data.featured.accent}15`,
-            border: `1px solid ${data.featured.accent}2e`, borderRadius: 20, padding: "2.5px 9px",
-          }}>{data.featured.tag}</span>
-          <p className={cormorant.className} style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.2, color: "#1e1030", margin: 0 }}>
-            {data.featured.title}
-          </p>
-          <p style={{ fontSize: 10.5, fontWeight: 300, lineHeight: 1.55, color: "#7a6a99", margin: 0 }}>
-            {data.featured.subtitle}
-          </p>
-          <a href={viewAllHref}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5,
-              fontSize: 9, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
-              color: data.featured.accent, textDecoration: "none", marginTop: 4, transition: "opacity 0.2s ease",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+        <div style={{ paddingLeft: 10, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ display: "block", width: 3, height: 10, borderRadius: 2, background: "#7B4BA0", flexShrink: 0 }} />
+          <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7B4BA0" }}>Crystal Wisdom</span>
+        </div>
+        {stoneLinks.map(link => <StoneLinkRow key={link.href} link={link} />)}
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(123,75,160,0.1)", paddingLeft: 10 }}>
+          <a href="/stones" style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
+            color: "#7B4BA0", textDecoration: "none",
+          }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
           >
-            View All
+            View Full Collection
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </a>
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ opacity: 0.15, marginTop: 2 }}>
-            <polygon points="14,1 27,14 14,27 1,14" fill="#7c5cbf" />
-            <polygon points="14,6 22,14 14,22 6,14" fill="#c084fc" />
-          </svg>
-        </div>
-
-        {/* Brand columns */}
-        <div style={{ display: "flex", gap: isMulti ? 16 : 0, flexWrap: "wrap" }}>
-          {data.sections.map((section, si) => (
-            <div key={section.brand} style={{
-              minWidth: 140,
-              opacity: show && visible ? 1 : 0,
-              transform: show && visible ? "translateY(0)" : "translateY(8px)",
-              transition: `opacity 0.28s ease ${60 + si * 65}ms, transform 0.28s cubic-bezier(0.4,0,0.2,1) ${60 + si * 65}ms`,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingLeft: 10 }}>
-                <span style={{ display: "block", width: 3, height: 11, borderRadius: 2, background: section.brandColor, flexShrink: 0 }} />
-                <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: section.brandColor }}>
-                  {section.brand}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {section.links.map(link => <DropLink key={link.label} link={link} accentColor={section.brandColor} />)}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
@@ -225,29 +482,29 @@ const DropPanel = ({ data, visible, alignRight, viewAllHref }: {
 interface NavItemDef { label: string; href: string; hasDropdown: boolean; }
 
 const NavItem = ({
-  item, navHidden, openMenu, setOpenMenu, dropData,
+  item, navHidden, openMenu, setOpenMenu, collectionsData, stoneLinks,
 }: {
-  item: NavItemDef;
-  navHidden: boolean;
-  openMenu: string | null;
-  setOpenMenu: React.Dispatch<React.SetStateAction<string | null>>;
-  dropData: DropData | null;
+  item: NavItemDef; navHidden: boolean;
+  openMenu: string | null; setOpenMenu: React.Dispatch<React.SetStateAction<string | null>>;
+  collectionsData: DropData; stoneLinks: StoneLink[];
 }) => {
-  const timeout  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isOpen   = openMenu === item.label;
-  const alignRight = item.label === "COLLECTIONS";
+  const timeout    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const anchorRef  = useRef<HTMLDivElement>(null);
+  const isOpen     = openMenu === item.label;
 
   const show = () => { if (timeout.current) clearTimeout(timeout.current); if (!navHidden && item.hasDropdown) setOpenMenu(item.label); };
   const hide = () => { timeout.current = setTimeout(() => setOpenMenu(p => p === item.label ? null : p), 130); };
-
   useEffect(() => { if (navHidden) setOpenMenu(null); }, [navHidden, setOpenMenu]);
 
   return (
-    <div style={{ position: "relative" }} onMouseEnter={show} onMouseLeave={hide}>
+    <div
+      ref={anchorRef}
+      style={{ position: "relative" }}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+    >
       <a href={item.href} className="empavai-navlink"
-        style={{ display: "flex", alignItems: "center", gap: 4, color: isOpen ? "#7c5cbf" : undefined }}
-        aria-haspopup={!!item.hasDropdown} aria-expanded={item.hasDropdown ? isOpen : undefined}
-      >
+        style={{ display: "flex", alignItems: "center", gap: 4, color: isOpen ? "#7c5cbf" : undefined }}>
         {item.label}
         {item.hasDropdown && (
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
@@ -264,40 +521,45 @@ const NavItem = ({
           transition: "width 0.26s cubic-bezier(0.4,0,0.2,1)",
         }} />
       )}
-      {item.hasDropdown && dropData && (
-        <DropPanel data={dropData} visible={isOpen} alignRight={alignRight}
-          viewAllHref={item.label === "COLLECTIONS" ? "/collections" : "/about-us"} />
-      )}
+      {item.label === "COLLECTIONS"    && <CollectionsPanel data={collectionsData} visible={isOpen} anchorRef={anchorRef} />}
+      {item.label === "ABOUT"          && <SacredPanel visible={isOpen} />}
+      {item.label === "CRYSTAL WISDOM" && <StonesPanel visible={isOpen} stoneLinks={stoneLinks} />}
     </div>
   );
 };
 
 // ── Main Navbar ───────────────────────────────────────────────────────────────
 export default function ElegantNavbar() {
-  const [isScrolled,       setIsScrolled]       = useState(false);
-  const [isHidden,         setIsHidden]          = useState(false);
-  const [mobileOpen,       setMobileOpen]        = useState(false);
-  const [mobileExp,        setMobileExp]         = useState<string | null>(null);
-  const [openMenu,         setOpenMenu]          = useState<string | null>(null);
-  const [collectionsData,  setCollectionsData]   = useState<DropData>(buildCollectionsDropdown([]));
+  const [isScrolled,      setIsScrolled]      = useState(false);
+  const [isHidden,        setIsHidden]         = useState(false);
+  const [mobileOpen,      setMobileOpen]       = useState(false);
+  const [mobileExp,       setMobileExp]        = useState<string | null>(null);
+  const [openMenu,        setOpenMenu]         = useState<string | null>(null);
+  const [collectionsData, setCollectionsData]  = useState<DropData>(buildDropData([], []));
+  const [stoneLinks,      setStoneLinks]       = useState<StoneLink[]>(buildStoneLinks([]));
   const lastY = useRef(0);
 
-  // ── Fetch categories from API ─────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const res  = await fetch(`${API_BASE}/api/categories`);
-        const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
-          setCollectionsData(buildCollectionsDropdown(data.data));
-        }
-      } catch (e) {
-        console.error("Navbar: failed to fetch categories", e);
-      }
+        const [catRes, prodRes, stoneRes] = await Promise.all([
+          fetch(`${API_BASE}/api/categories`),
+          fetch(`${API_BASE}/api/products`),
+          fetch(`${API_BASE}/api/stones`),
+        ]);
+        const [catData, prodData, stoneData] = await Promise.all([
+          catRes.json(), prodRes.json(), stoneRes.json(),
+        ]);
+        const categories: Category[] = catData.success   && Array.isArray(catData.data)   ? catData.data   : [];
+        const products:   Product[]  = prodData.success  && Array.isArray(prodData.data)  ? prodData.data  : [];
+        const stones:     Stone[]    = stoneData.success && Array.isArray(stoneData.data) ? stoneData.data
+                                     : Array.isArray(stoneData)                           ? stoneData       : [];
+        setCollectionsData(buildDropData(categories, products));
+        setStoneLinks(buildStoneLinks(stones));
+      } catch (e) { console.error("Navbar fetch error", e); }
     })();
   }, []);
 
-  // ── Scroll hide/show ──────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
@@ -312,9 +574,12 @@ export default function ElegantNavbar() {
   }, []);
 
   const NAV_ITEMS: NavItemDef[] = [
-    { label: "HOME",          href: "/",            hasDropdown: false },
-    { label: "SACRED SPACES", href: "/about-us",    hasDropdown: true  },
-    { label: "COLLECTIONS",   href: "/collections", hasDropdown: true  },
+    { label: "HOME",           href: "/",             hasDropdown: false },
+    { label: "COLLECTIONS",    href: "/collections",  hasDropdown: true  },
+    { label: "CRYSTAL WISDOM", href: "/stones",       hasDropdown: true  },
+    { label: "ABOUT",          href: "/about-us",     hasDropdown: false },
+    { label: "TESTIMONIALS",   href: "/testimonials", hasDropdown: false },
+    { label: "CONTACT",        href: "/contact",      hasDropdown: false },
   ];
 
   return (
@@ -327,14 +592,14 @@ export default function ElegantNavbar() {
         }
         .empavai-navlink:hover { color: #7c5cbf; }
 
-        .empavai-shopbtn {
+        .empavai-contactbtn {
           font-size: 11px; font-weight: 600; letter-spacing: 0.14em; color: #fff !important;
           background: #7c5cbf; border: none; border-radius: 50px; padding: 9px 22px;
           cursor: pointer; text-decoration: none; display: inline-block;
           transition: background 0.22s ease, transform 0.18s ease, box-shadow 0.22s ease;
           box-shadow: 0 2px 12px rgba(124,92,191,0.28); white-space: nowrap;
         }
-        .empavai-shopbtn:hover { background: #6344a8; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(124,92,191,0.38); }
+        .empavai-contactbtn:hover { background: #6344a8; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(124,92,191,0.38); }
 
         .en-ham { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; }
         .en-ham span { display: block; width: 22px; height: 1.5px; background: #4a3966; transition: all 0.28s ease; }
@@ -354,41 +619,61 @@ export default function ElegantNavbar() {
           display: flex; align-items: center; justify-content: space-between;
           width: 100%; padding: 15px 28px; background: none; border: none; cursor: pointer;
           font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
-          color: #4a3966; text-decoration: none; text-align: left; transition: color 0.2s ease;
+          color: #4a3966; text-align: left; transition: color 0.2s ease; text-decoration: none;
         }
         .en-mob-trigger:hover { color: #7c5cbf; }
-        .en-mob-links { padding: 0 20px 16px 28px; display: flex; flex-direction: column; }
-        .en-mob-brand { display: flex; align-items: center; gap: 6px; padding: 10px 0 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
-        .en-mob-link  { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border-radius: 7px; text-decoration: none; margin-bottom: 2px; transition: background 0.18s ease; }
-        .en-mob-link:hover { background: rgba(124,92,191,0.06); }
-        .en-mob-link-label { font-size: 12.5px; font-weight: 400; color: #2e1f4a; }
-        .en-mob-link-sub   { font-size: 10px;   font-weight: 300; color: #a090bb; }
+        .en-mob-content { padding: 0 20px 20px 28px; }
         .en-mob-viewall {
-          display: flex; align-items: center; gap: 6px; padding: 8px 0 12px;
+          display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px;
           font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-          color: #7c5cbf; text-decoration: none; transition: opacity 0.2s ease;
+          color: #7c5cbf; text-decoration: none;
         }
-        .en-mob-viewall:hover { opacity: 0.7; }
+        .en-mob-prod-link {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 8px 8px 8px 16px; border-radius: 6px; text-decoration: none;
+          font-size: 13px; color: #4a3a6a; margin-bottom: 2px; transition: background 0.18s ease;
+        }
+        .en-mob-prod-link:hover { background: rgba(124,92,191,0.07); color: #7c5cbf; }
 
-        @media (max-width: 768px) {
-          .empavai-desknav  { display: none !important; }
-          .empavai-deskshop { display: none !important; }
-          .en-ham           { display: flex !important; }
-          .en-mob-drawer    { display: flex !important; }
-          .empavai-sub      { display: none !important; }
+        /* ── Desktop nav: centred absolutely inside the nav bar ── */
+        .empavai-desknav {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          /* CRITICAL: overflow visible so dropdowns are not clipped */
+          overflow: visible;
+        }
+
+        .empavai-col-scroll::-webkit-scrollbar { display: none; }
+
+        @media (max-width: 1100px) { .empavai-desknav { gap: 16px; } }
+        @media (max-width: 900px) {
+          .empavai-desknav { display: none !important; }
+          .empavai-deskbtn { display: none !important; }
+          .en-ham          { display: flex !important; }
+          .en-mob-drawer   { display: flex !important; }
+          .empavai-sub     { display: none !important; }
         }
       `}</style>
 
-      <nav aria-label="Main navigation" style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1060,
-        height: 64, display: "flex", alignItems: "center", padding: "0 40px",
-        background: "rgba(248,246,254,0.97)",
-        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-        borderBottom: isScrolled ? "1px solid rgba(124,92,191,0.14)" : "1px solid rgba(124,92,191,0.07)",
-        boxShadow: isScrolled ? "0 4px 28px rgba(80,30,140,0.1)" : "none",
-        transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease",
-        transform: isHidden ? "translateY(-100%)" : "translateY(0)",
-      }}>
+      <nav
+        aria-label="Main navigation"
+        style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 1060,
+          height: 64, display: "flex", alignItems: "center", padding: "0 32px",
+          background: "rgba(248,246,254,0.97)",
+          backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          borderBottom: isScrolled ? "1px solid rgba(124,92,191,0.14)" : "1px solid rgba(124,92,191,0.07)",
+          boxShadow: isScrolled ? "0 4px 28px rgba(80,30,140,0.1)" : "none",
+          transition: "transform 0.38s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease",
+          transform: isHidden ? "translateY(-100%)" : "translateY(0)",
+          // CRITICAL: allow dropdown to overflow the nav bar
+          overflow: "visible",
+        }}
+      >
         {/* Logo */}
         <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
           <Logo />
@@ -402,32 +687,22 @@ export default function ElegantNavbar() {
           </div>
         </a>
 
-        <div style={{ flex: 1 }} />
-
-        {/* Desktop nav */}
-        <div className={`empavai-desknav ${jost.className}`} style={{
-          display: "flex", alignItems: "center", gap: 38,
-          position: "absolute", left: "50%", transform: "translateX(-50%)",
-        }}>
+        {/* Desktop nav — centred absolutely, overflow visible */}
+        <div className={`empavai-desknav ${jost.className}`}>
           {NAV_ITEMS.map(item => (
-            <NavItem
-              key={item.label}
-              item={item}
-              navHidden={isHidden}
-              openMenu={openMenu}
-              setOpenMenu={setOpenMenu}
-              dropData={
-                item.label === "COLLECTIONS"   ? collectionsData :
-                item.label === "SACRED SPACES" ? SACRED_DATA     : null
-              }
-            />
+            <NavItem key={item.label} item={item} navHidden={isHidden}
+              openMenu={openMenu} setOpenMenu={setOpenMenu}
+              collectionsData={collectionsData} stoneLinks={stoneLinks} />
           ))}
         </div>
 
         <div style={{ flex: 1 }} />
 
-        <a href="/collections" className={`empavai-shopbtn empavai-deskshop ${jost.className}`}>SHOP NOW</a>
+        <a href="/contact" className={`empavai-contactbtn empavai-deskbtn ${jost.className}`}>
+          CONTACT US
+        </a>
 
+        {/* Hamburger */}
         <button className="en-ham" onClick={() => setMobileOpen(v => !v)}
           aria-label={mobileOpen ? "Close" : "Menu"} aria-expanded={mobileOpen}>
           <span style={{ transform: mobileOpen ? "rotate(45deg) translate(5px,5px)"   : "none" }} />
@@ -436,14 +711,12 @@ export default function ElegantNavbar() {
         </button>
       </nav>
 
-      {/* Mobile drawer */}
+      {/* ── Mobile drawer ── */}
       <div className={`en-mob-drawer ${jost.className}${mobileOpen ? " open" : ""}`} aria-hidden={!mobileOpen}>
         {NAV_ITEMS.map(item => {
-          const dropData = item.label === "COLLECTIONS" ? collectionsData
-                         : item.label === "SACRED SPACES" ? SACRED_DATA : null;
           const expanded = mobileExp === item.label;
 
-          if (!dropData) {
+          if (!item.hasDropdown) {
             return (
               <div key={item.label} className="en-mob-row">
                 <a href={item.href} className="en-mob-trigger" onClick={() => setMobileOpen(false)}>{item.label}</a>
@@ -451,34 +724,100 @@ export default function ElegantNavbar() {
             );
           }
 
+          if (item.label === "ABOUT") {
+            return (
+              <div key={item.label} className="en-mob-row">
+                <button className="en-mob-trigger" onClick={() => setMobileExp(expanded ? null : item.label)} aria-expanded={expanded}>
+                  {item.label}
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <polyline points={expanded ? "2,8 6,4 10,8" : "2,4 6,8 10,4"} />
+                  </svg>
+                </button>
+                {expanded && (
+                  <div className="en-mob-content">
+                    {SACRED_LINKS.map(link => (
+                      <a key={link.href} href={link.href} className="en-mob-prod-link" onClick={() => setMobileOpen(false)}>
+                        <span>{link.label}</span>
+                        <span style={{ fontSize: 10, color: "#a090bb" }}>{link.sub}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          if (item.label === "CRYSTAL WISDOM") {
+            return (
+              <div key={item.label} className="en-mob-row">
+                <button className="en-mob-trigger" onClick={() => setMobileExp(expanded ? null : item.label)} aria-expanded={expanded}>
+                  {item.label}
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <polyline points={expanded ? "2,8 6,4 10,8" : "2,4 6,8 10,4"} />
+                  </svg>
+                </button>
+                {expanded && (
+                  <div className="en-mob-content">
+                    <a href="/stones" className="en-mob-viewall" onClick={() => setMobileOpen(false)}>
+                      View Full Collection
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                      </svg>
+                    </a>
+                    {stoneLinks.slice(1).map(link => (
+                      <a key={link.href} href={link.href} className="en-mob-prod-link" onClick={() => setMobileOpen(false)}>
+                        <span>{link.label}</span>
+                        <span style={{ fontSize: 10, color: "#a090bb" }}>{link.sub}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // COLLECTIONS mobile
           return (
             <div key={item.label} className="en-mob-row">
-              <button className="en-mob-trigger"
-                onClick={() => setMobileExp(expanded ? null : item.label)}
-                aria-expanded={expanded}>
+              <button className="en-mob-trigger" onClick={() => setMobileExp(expanded ? null : item.label)} aria-expanded={expanded}>
                 {item.label}
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <polyline points={expanded ? "2,8 6,4 10,8" : "2,4 6,8 10,4"} />
                 </svg>
               </button>
               {expanded && (
-                <div className="en-mob-links">
-                  <a href={item.href} className="en-mob-viewall" onClick={() => setMobileOpen(false)}>
-                    View All {item.label === "COLLECTIONS" ? "Collections" : "Sacred Spaces"}
+                <div className="en-mob-content">
+                  <a href="/collections" className="en-mob-viewall" onClick={() => setMobileOpen(false)}>
+                    View All Collections
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                     </svg>
                   </a>
-                  {dropData.sections.map(section => (
-                    <div key={section.brand}>
-                      <div className="en-mob-brand" style={{ color: section.brandColor }}>
-                        <span style={{ display: "block", width: 3, height: 10, borderRadius: 2, background: section.brandColor, flexShrink: 0 }} />
-                        {section.brand}
-                      </div>
-                      {section.links.map(link => (
-                        <a key={link.label} href={link.href} className="en-mob-link" onClick={() => setMobileOpen(false)}>
-                          <span className="en-mob-link-label">{link.label}</span>
-                          {link.sub && <span className="en-mob-link-sub">{link.sub}</span>}
+                  {collectionsData.columns.map(col => (
+                    <div key={col.name} style={{ marginBottom: 18 }}>
+                      <a href={`/collections/${encodeURIComponent(col.name)}`}
+                        onClick={() => setMobileOpen(false)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          textDecoration: "none", paddingBottom: 8, marginBottom: 4,
+                          borderBottom: `1px solid ${col.color}22`,
+                        }}>
+                        <span style={{ display: "block", width: 3, height: 16, borderRadius: 2, background: col.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1e1030" }}>{col.name}</span>
+                        <span style={{ fontSize: 10, color: "#a090bb", fontWeight: 300 }}>{col.subtitle}</span>
+                      </a>
+                      {col.products.map(prod => (
+                        <a key={prod.slug} href={`/product/${prod.slug}`}
+                          className="en-mob-prod-link" onClick={() => setMobileOpen(false)}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>{prod.name}</span>
+                            {prod.isNew && (
+                              <span style={{
+                                fontSize: 7, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+                                color: "#fff", background: col.color, padding: "1.5px 5px", borderRadius: 8,
+                              }}>NEW</span>
+                            )}
+                          </div>
                         </a>
                       ))}
                     </div>
@@ -488,11 +827,12 @@ export default function ElegantNavbar() {
             </div>
           );
         })}
-        <div style={{ padding: "16px 28px 8px" }}>
-          <a href="/collections" className="empavai-shopbtn"
+
+        <div style={{ padding: "16px 28px 20px" }}>
+          <a href="/contact" className="empavai-contactbtn"
             style={{ textAlign: "center", width: "100%", display: "block" }}
             onClick={() => setMobileOpen(false)}>
-            SHOP NOW
+            CONTACT US
           </a>
         </div>
       </div>

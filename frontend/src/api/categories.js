@@ -4,7 +4,7 @@ const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://loca
 
 // attach token on every request
 API.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('gh_token'); // ← was 'adminToken'
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });

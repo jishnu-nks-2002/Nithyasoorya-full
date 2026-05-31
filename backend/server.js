@@ -1,11 +1,20 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
+const path    = require('path');
 const connectDB = require('./config/db');
 
+// ── Existing routes ───────────────────────────────────────────────────────────
 const authRoutes        = require('./routes/auth');
 const galleryHeroRoutes = require('./routes/galleryHero');
-const shopRoutes        = require('./routes/routes'); // ← replaces productRoutes + categoryRoutes
+const shopRoutes        = require('./routes/routes');
+const contactRoutes     = require('./routes/contact');
+const aboutRoutes       = require('./routes/about');
+const reviewRoutes      = require('./routes/reviews');
+const galleryRoutes = require('./routes/gallery_route');
+
+// ── Stones route (NEW) ────────────────────────────────────────────────────────
+const stoneRoutes = require('./routes/stones');
 
 const app = express();
 
@@ -14,19 +23,30 @@ connectDB();
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
   ],
-  credentials: true
+  credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Serve all uploaded files (images, stones, etc.)
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+// ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes);
 app.use('/api/gallery-hero', galleryHeroRoutes);
-app.use('/api',              shopRoutes); // ← single mount; URLs stay identical
+app.use('/api',              shopRoutes);
+app.use('/api/contact',      contactRoutes);
+app.use('/api/about',        aboutRoutes);
+app.use('/api/reviews',      reviewRoutes);
+app.use('/api/stones',       stoneRoutes);   // ✅ Stones CRUD
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Gallery Hero API running', timestamp: new Date() });
+app.use('/api/gallery', galleryRoutes);
+// ── Health check ──────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({ success: true, message: 'API running', timestamp: new Date() });
 });
 
 const PORT = process.env.PORT || 5000;

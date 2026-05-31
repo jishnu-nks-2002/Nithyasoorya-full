@@ -1,5 +1,7 @@
+"use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import './Galleryhero.css';
+import { useGalleryHero } from '../../api/useGalleryHero';
+import "./Galleryhero.css"
 
 interface SlideItem {
   type: 'image' | 'video';
@@ -10,67 +12,66 @@ interface SlideItem {
   description?: string;
 }
 
-interface GalleryHeroProps {
-  verticalText?: string;
-  leftLabel?: string;
-  ctaText?: string;
-  ctaLink?: string;
-  slides?: SlideItem[];
-  autoPlayInterval?: number;
-  onMenuToggle?: () => void;
-}
+const DEFAULT_SLIDES: SlideItem[] = [
+  {
+    type: 'image',
+    src: '/images/p-2.jpeg',
+    alt: 'Buddha Statue',
+    title: 'EMPAVA',
+    description: 'The intersection of ancient traditions and avant-garde sculpture forms',
+  },
+  {
+    type: 'image',
+    src: '/images/p-4.jpeg',
+    alt: 'Zen Garden',
+    title: 'SERENITY',
+    description: 'A journey through peaceful landscapes and mindful spaces',
+  },
+  {
+    type: 'video',
+    src: '/images/videos/video-2.mp4',
+    poster: '/images/p-6.jpeg',
+    alt: 'Temple Architecture',
+    title: 'HARMONY',
+    description: 'Where classical design meets contemporary vision',
+  },
+  {
+    type: 'image',
+    src: '/images/p-3.jpeg',
+    alt: 'Modern Sculpture',
+    title: 'ESSENCE',
+    description: 'Capturing the spirit of timeless artistic expression',
+  },
+];
 
-const GalleryHero: React.FC<GalleryHeroProps> = ({
-  verticalText = 'Museum Exhibition 2024',
-  leftLabel = 'FEATURED EXHIBITION',
-  ctaText = 'EXPLORE THE COLLECTION',
-  ctaLink = '#collection',
-  slides = [
-    {
-      type: 'image',
-      src: '/images/p-2.jpeg',
-      alt: 'Buddha Statue',
-      title: 'EMPAVA',
-      description: 'The intersection of ancient traditions and avant-garde sculpture forms',
-    },
-    {
-      type: 'image',
-      src: '/images/p-4.jpeg',
-      alt: 'Zen Garden',
-      title: 'SERENITY',
-      description: 'A journey through peaceful landscapes and mindful spaces',
-    },
-    {
-      type: 'video',
-      src: '/images/videos/video-2.mp4',
-      poster: '/images/p-6.jpeg',
-      alt: 'Temple Architecture',
-      title: 'HARMONY',
-      description: 'Where classical design meets contemporary vision',
-    },
-    {
-      type: 'image',
-      src: '/images/p-3.jpeg',
-      alt: 'Modern Sculpture',
-      title: 'ESSENCE',
-      description: 'Capturing the spirit of timeless artistic expression',
-    },
-  ],
-  autoPlayInterval = 5000,
-  onMenuToggle,
-}) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
+const GalleryHero: React.FC = () => {
+  // ── Fetch from backend ──────────────────────────────────────
+  const { data, loading, error } = useGalleryHero();
+
+  // Use API data if available, otherwise fall back to defaults
+  const slides: SlideItem[]  = data?.slides?.length  ? data.slides  : DEFAULT_SLIDES;
+  const verticalText: string = data?.verticalText    ?? 'Museum Exhibition 2024';
+  const leftLabel: string    = data?.leftLabel       ?? 'FEATURED EXHIBITION';
+  const ctaText: string      = data?.ctaText         ?? 'EXPLORE THE COLLECTION';
+  const ctaLink: string      = data?.ctaLink         ?? '#collection';
+  const autoPlayInterval     = data?.autoPlayInterval ?? 5000;
+
+  // ── Slider state ────────────────────────────────────────────
+  const [currentSlide, setCurrentSlide]     = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [dotProgress, setDotProgress] = useState(0);
+  const [dotProgress, setDotProgress]       = useState(0);
 
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const imageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const videoRefs       = useRef<(HTMLVideoElement | null)[]>([]);
+  const imageTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef          = useRef<number | null>(null);
   const progressStartRef = useRef<number>(0);
+
+  // Reset to slide 0 whenever the API data arrives with new slides
+  useEffect(() => { setCurrentSlide(0); }, [data]);
 
   const clearTimers = useCallback(() => {
     if (imageTimerRef.current) { clearInterval(imageTimerRef.current); imageTimerRef.current = null; }
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (rafRef.current)        { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
 
   const advanceSlide = useCallback(() => {
@@ -108,11 +109,11 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!slides.length) return;
     clearTimers();
     setDotProgress(0);
     const slide = slides[currentSlide];
 
-    // Pause all other videos
     videoRefs.current.forEach((v, i) => {
       if (v && i !== currentSlide) { v.pause(); v.currentTime = 0; }
     });
@@ -121,7 +122,6 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
       startImageProgress(autoPlayInterval);
       imageTimerRef.current = setInterval(advanceSlide, autoPlayInterval);
     } else {
-      // Video slide: play from start and track progress
       const video = videoRefs.current[currentSlide];
       if (video) {
         video.currentTime = 0;
@@ -131,7 +131,7 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
     }
 
     return clearTimers;
-  }, [currentSlide]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentSlide, slides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goToSlide = (index: number) => {
     if (index === currentSlide) return;
@@ -154,12 +154,27 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
     }
   };
 
-  const currentSlideData = slides[currentSlide];
+  // ── Loading / error states ──────────────────────────────────
+  if (loading) {
+    return (
+      <section className="gallery-hero">
+        <div className="gallery-hero-loading">Loading...</div>
+      </section>
+    );
+  }
 
+  if (error && !data) {
+    console.warn('GalleryHero: using default slides due to API error:', error);
+    // Component continues to render with DEFAULT_SLIDES — no hard crash
+  }
+
+  const currentSlideData = slides[currentSlide] ?? slides[0];
+
+  // ── Render ──────────────────────────────────────────────────
   return (
     <section className="gallery-hero">
 
-      {/* ── Full-bleed media layer (sits behind everything) ── */}
+      {/* Full-bleed media layer */}
       <div className="gallery-media-layer">
         {slides.map((slide, index) => (
           <div
@@ -199,10 +214,10 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
         ))}
       </div>
 
-      {/* ── White gradient overlay — covers left ~55%, fades to transparent ── */}
+      {/* White gradient overlay */}
       <div className="gallery-white-fade" />
 
-      {/* ── Left content — floats over the gradient ── */}
+      {/* Left content */}
       <div className="gallery-hero-left">
         <div className="gallery-vertical-text">{verticalText}</div>
 
@@ -211,12 +226,12 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
 
           <div className="gallery-hero-left-heading-wrapper">
             <h1 className="gallery-hero-title">
-              {currentSlideData.title || 'EMPAVA'}
+              {currentSlideData?.title || 'EMPAVA'}
             </h1>
           </div>
 
           <p className="gallery-left-description" key={`desc-${currentSlide}`}>
-            {currentSlideData.description ||
+            {currentSlideData?.description ||
               'The intersection of ancient traditions and avant-garde sculpture forms'}
           </p>
 
@@ -226,7 +241,7 @@ const GalleryHero: React.FC<GalleryHeroProps> = ({
         </div>
       </div>
 
-      {/* ── Nav dots (right edge) ── */}
+      {/* Nav dots */}
       {slides.length > 1 && (
         <div className="gallery-slider-dots">
           {slides.map((_, index) => (

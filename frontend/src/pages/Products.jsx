@@ -5,26 +5,43 @@ import { fetchProductsAdmin, deleteProduct, reorderProducts } from '../api/produ
 import { Card, Button, Badge, PageHeader, EmptyState, Spinner } from '../components/ui';
 import './Products.css';
 
-const CATEGORIES = ['all', 'products', 'stones', 'bracelets'];
 const AVAIL_COLOR = { Available: 'success', Inquire: 'warning', 'Sold Out': 'danger' };
+
+const API_BASE =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+  'http://localhost:5000';
 
 export default function Products() {
   const navigate = useNavigate();
-  const [items, setItems]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState('all');
-  const [search, setSearch]       = useState('');
-  const [deleting, setDeleting]   = useState(null);
-  const [dragging, setDragging]   = useState(null);
-  const [dragOver, setDragOver]   = useState(null);
+  const [items,      setItems]      = useState([]);
+  const [categories, setCategories] = useState([]);   // dynamic from API
+  const [loading,    setLoading]    = useState(true);
+  const [tab,        setTab]        = useState('all');
+  const [search,     setSearch]     = useState('');
+  const [deleting,   setDeleting]   = useState(null);
+  const [dragging,   setDragging]   = useState(null);
+  const [dragOver,   setDragOver]   = useState(null);
 
+  // ── Fetch categories once on mount ────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/api/categories`);
+        const data = await res.json();
+        if (data.success) setCategories(data.data || []);
+      } catch {
+        toast.error('Failed to load categories');
+      }
+    })();
+  }, []);
+
+  // ── Fetch products whenever tab / search changes ───────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
       if (tab !== 'all') params.category = tab;
       if (search)        params.search   = search;
-      // Uses GET /api/products/admin
       const res = await fetchProductsAdmin(params);
       setItems(res.data.data);
     } catch { toast.error('Failed to load products'); }
@@ -33,11 +50,11 @@ export default function Products() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
     setDeleting(id);
     try {
-      // Uses DELETE /api/products/:id
       await deleteProduct(id);
       setItems((p) => p.filter((i) => i._id !== id));
       toast.success('Product deleted');
@@ -45,7 +62,7 @@ export default function Products() {
     finally { setDeleting(null); }
   };
 
-  // Drag-to-reorder within the current filtered list
+  // ── Drag-to-reorder ───────────────────────────────────────────────────────
   const onDragStart = (e, idx) => { setDragging(idx); e.dataTransfer.effectAllowed = 'move'; };
   const onDragOver  = (e, idx) => { e.preventDefault(); setDragOver(idx); };
   const onDrop      = async (e, targetIdx) => {
@@ -57,42 +74,49 @@ export default function Products() {
     setItems(reordered);
     setDragging(null); setDragOver(null);
     try {
-      // Uses PUT /api/products/reorder with { orderedIds }
       await reorderProducts(reordered.map((i) => i._id));
       toast.success('Order saved');
     } catch { toast.error('Reorder failed'); load(); }
   };
 
-  const counts = { all: items.length };
-  CATEGORIES.slice(1).forEach((c) => { counts[c] = items.filter((i) => i.category === c).length; });
-  const displayed = items;
+  // ── Tab counts ────────────────────────────────────────────────────────────
+  const countFor = (catName) =>
+    catName === 'all'
+      ? items.length
+      : items.filter((i) => i.category === catName).length;
+
+  // All tab labels: "all" + every category name
+  const tabs = ['all', ...categories.map((c) => c.name)];
 
   return (
     <div>
-      <PageHeader title="Products" subtitle="Manage products, stones, and bracelets">
+      <PageHeader title="Products" subtitle="Manage your product catalogue">
         <Button variant="primary" onClick={() => navigate('/products/new')}>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v10M3 8h10"/></svg>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M8 3v10M3 8h10"/>
+          </svg>
           Add product
         </Button>
       </PageHeader>
 
-      {/* Category tabs */}
+      {/* ── Dynamic category tabs ── */}
       <div className="tabBar">
-        {CATEGORIES.map((c) => (
+        {tabs.map((t) => (
           <button
-            key={c}
-            className={`tab ${tab === c ? 'tabActive' : ''}`}
-            onClick={() => setTab(c)}
+            key={t}
+            className={`tab ${tab === t ? 'tabActive' : ''}`}
+            onClick={() => setTab(t)}
           >
-            {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
-            <span className="tabCount">{tab === c || c === 'all' ? counts[c] ?? 0 : ''}</span>
+            {t === 'all' ? 'All' : t}
+            <span className="tabCount">{countFor(t)}</span>
           </button>
         ))}
       </div>
 
-      {/* Search */}
+      {/* ── Search ── */}
       <div className="searchBar">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-hint)' }}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+          style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-hint)' }}>
           <circle cx="6.5" cy="6.5" r="5"/><path d="M10.5 10.5l3 3"/>
         </svg>
         <input
@@ -103,9 +127,10 @@ export default function Products() {
         />
       </div>
 
+      {/* ── Content ── */}
       {loading ? (
         <div className="loadingWrap"><Spinner size={26}/><span>Loading…</span></div>
-      ) : displayed.length === 0 ? (
+      ) : items.length === 0 ? (
         <Card>
           <EmptyState
             icon="📦"
@@ -117,17 +142,17 @@ export default function Products() {
       ) : (
         <div className="table">
           <div className="tableHead">
-            <span style={{width:48}}></span>
-            <span style={{flex:2}}>Name</span>
-            <span style={{width:90}}>Category</span>
-            <span style={{width:130}}>Series</span>
-            <span style={{width:80}}>Price</span>
-            <span style={{width:90}}>Availability</span>
-            <span style={{width:70}}>Status</span>
-            <span style={{width:130}}>Actions</span>
+            <span style={{ width: 48 }}></span>
+            <span style={{ flex: 2 }}>Name</span>
+            <span style={{ width: 120 }}>Category</span>
+            <span style={{ width: 130 }}>Series</span>
+            <span style={{ width: 80 }}>Price</span>
+            <span style={{ width: 90 }}>Availability</span>
+            <span style={{ width: 70 }}>Status</span>
+            <span style={{ width: 130 }}>Actions</span>
           </div>
 
-          {displayed.map((item, idx) => (
+          {items.map((item, idx) => (
             <div
               key={item._id}
               className={`tableRow ${dragOver === idx ? 'dragOver' : ''} ${dragging === idx ? 'dragging' : ''}`}
@@ -137,7 +162,7 @@ export default function Products() {
               onDrop={(e)      => onDrop(e, idx)}
               onDragEnd={() => { setDragging(null); setDragOver(null); }}
             >
-              {/* Drag handle + thumb */}
+              {/* Drag handle + thumbnail */}
               <div className="thumbCol">
                 <div className="dragHandle" title="Drag to reorder">
                   <svg width="10" height="10" viewBox="0 0 10 12" fill="currentColor">
@@ -148,35 +173,39 @@ export default function Products() {
                 </div>
                 <div className="thumb">
                   {item.images?.[0]?.url
-                    ? <img src={item.images.find(i=>i.isPrimary)?.url || item.images[0].url} alt={item.name}/>
+                    ? <img src={item.images.find(i => i.isPrimary)?.url || item.images[0].url} alt={item.name}/>
                     : <span>📷</span>}
                 </div>
               </div>
 
-              <div style={{flex:2, minWidth:0}}>
+              <div style={{ flex: 2, minWidth: 0 }}>
                 <div className="itemName">{item.name}</div>
                 <div className="itemMeta">{item.material || '—'}</div>
               </div>
 
-              <span style={{width:90}}>
+              <span style={{ width: 120 }}>
                 <Badge variant="info">{item.category}</Badge>
               </span>
 
-              <span className="cellText" style={{width:130}}>{item.series || '—'}</span>
-              <span className="cellText" style={{width:80, fontWeight:600}}>{item.priceDisplay || `$${item.price}`}</span>
+              <span className="cellText" style={{ width: 130 }}>{item.series || '—'}</span>
+              <span className="cellText" style={{ width: 80, fontWeight: 600 }}>
+                {item.priceDisplay || `₹${item.price}`}
+              </span>
 
-              <span style={{width:90}}>
+              <span style={{ width: 90 }}>
                 <Badge variant={AVAIL_COLOR[item.availability] || 'default'}>{item.availability}</Badge>
               </span>
 
-              <span style={{width:70}}>
-                <Badge variant={item.isActive ? 'success' : 'warning'}>{item.isActive ? 'Live' : 'Hidden'}</Badge>
+              <span style={{ width: 70 }}>
+                <Badge variant={item.isActive ? 'success' : 'warning'}>
+                  {item.isActive ? 'Live' : 'Hidden'}
+                </Badge>
               </span>
 
-              <div style={{width:130, display:'flex', gap:6}}>
-                {/* Navigate to edit route: /products/edit/:id */}
+              <div style={{ width: 130, display: 'flex', gap: 6 }}>
                 <Button size="sm" onClick={() => navigate(`/products/edit/${item._id}`)}>Edit</Button>
-                <Button size="sm" variant="danger" loading={deleting === item._id} onClick={() => handleDelete(item._id, item.name)}>Del</Button>
+                <Button size="sm" variant="danger" loading={deleting === item._id}
+                  onClick={() => handleDelete(item._id, item.name)}>Del</Button>
               </div>
             </div>
           ))}
