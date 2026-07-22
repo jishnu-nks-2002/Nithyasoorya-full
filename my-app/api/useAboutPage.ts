@@ -60,7 +60,7 @@ function prefixUrl(url: string) {
   return `${API_BASE}${url}?t=${Date.now()}`;
 }
 
-function prefixAllImages(data) {
+function prefixAllImages(data: any) {
   return {
     ...data,
     hero: {
