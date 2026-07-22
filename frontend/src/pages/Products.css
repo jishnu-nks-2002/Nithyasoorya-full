@@ -1,0 +1,30 @@
+.tabBar { display:flex; gap:0; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; }
+.tab { padding: 8px 16px 7px; font-size:12px; font-weight:500; cursor:pointer; color:var(--text-muted); border:none; background:none; border-bottom:2px solid transparent; margin-bottom:-0.5px; font-family:inherit; transition:color 0.13s, border-color 0.13s; display:flex; align-items:center; gap:6px; }
+.tab:hover { color:var(--text); }
+.tabActive { color:var(--accent); border-bottom-color:var(--accent); }
+.tabCount { background:var(--bg); border-radius:20px; padding:1px 7px; font-size:10px; font-weight:600; color:var(--text-muted); min-width:20px; text-align:center; }
+.tabActive .tabCount { background:var(--accent-light); color:var(--accent); }
+
+.searchBar { position:relative; margin-bottom:1rem; }
+
+.loadingWrap { display:flex; align-items:center; justify-content:center; gap:12px; height:40vh; color:var(--text-muted); }
+
+/* Table */
+.table { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+.tableHead { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--surface-secondary); border-bottom:0.5px solid var(--border); font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; }
+.tableRow { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:0.5px solid var(--border); transition:background 0.12s, opacity 0.15s, transform 0.15s; cursor:grab; }
+.tableRow:last-child { border-bottom:none; }
+.tableRow:hover { background:var(--surface-secondary); }
+.tableRow:active { cursor:grabbing; }
+.dragging { opacity:0.4; transform:scale(0.99); }
+.dragOver { background:var(--accent-light) !important; outline:1.5px solid var(--accent); border-radius:4px; }
+
+.thumbCol { width:48px; display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.dragHandle { color:var(--text-hint); cursor:grab; display:flex; align-items:center; opacity:0; transition:opacity 0.13s; }
+.tableRow:hover .dragHandle { opacity:1; }
+.thumb { width:36px; height:28px; border-radius:4px; overflow:hidden; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.thumb img { width:100%; height:100%; object-fit:cover; }
+
+.itemName { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.itemMeta { font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.cellText { font-size:12px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
