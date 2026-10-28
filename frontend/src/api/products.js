@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api' });
+const ROOT = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const API = axios.create({ baseURL: `${ROOT}/api` });
 
 API.interceptors.request.use((cfg) => {
   const token = localStorage.getItem('gh_token'); // ← was 'adminToken'
