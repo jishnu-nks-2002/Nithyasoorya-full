@@ -49,7 +49,7 @@ const GalleryHero: React.FC = () => {
   const { data, loading, error } = useGalleryHero();
 
   // Use API data if available, otherwise fall back to defaults
-  const slides: SlideItem[]  = data?.slides?.length  ? data.slides  : DEFAULT_SLIDES;
+const slides: SlideItem[]  = data?.slides?.length  ? (data.slides as SlideItem[])  : DEFAULT_SLIDES;
   const verticalText: string = data?.verticalText    ?? 'Museum Exhibition 2024';
   const leftLabel: string    = data?.leftLabel       ?? 'FEATURED EXHIBITION';
   const ctaText: string      = data?.ctaText         ?? 'EXPLORE THE COLLECTION';
