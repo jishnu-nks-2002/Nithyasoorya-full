@@ -82,7 +82,7 @@ function prefixAllImages(data: any) {
   };
 }
 
-function normaliseHero(hero) {
+function normaliseHero(hero: any) {
   return {
     ...hero,
     carouselWords: Array.isArray(hero.carouselWords)
@@ -102,7 +102,7 @@ function normaliseHero(hero) {
  * Exception: bodyLeft / bodyRight — if DB returns "" we fall back to DEFAULTS
  * so the frontend never shows a blank paragraph.
  */
-function mergeWithDefaults(dbData) {
+function mergeWithDefaults(dbData: any) {
   const about = {
     ...DEFAULTS.about,
     ...dbData.about,
@@ -121,9 +121,9 @@ function mergeWithDefaults(dbData) {
 }
 
 export function useAboutPage() {
-  const [data,    setData]    = useState(DEFAULTS);
+  const [data,    setData]    = useState<any>(DEFAULTS);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [error,   setError]   = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -141,7 +141,7 @@ export function useAboutPage() {
         const merged = mergeWithDefaults(json.data);
         setData(prefixAllImages(merged));
       }
-    } catch (e) {
+    } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
