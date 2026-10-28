@@ -24,15 +24,19 @@ const FALLBACK = {
   imageBottom: "/images/p-4.jpeg",
 };
 
-const EmpavaiAbout: FC = () => {
+// `data` is optional: when the parent page passes it, it is used directly;
+// otherwise the component falls back to fetching on its own.
+type EmpavaiAboutProps = { data?: any };
+
+const EmpavaiAbout: FC<EmpavaiAboutProps> = ({ data }) => {
   const [visible, setVisible] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
 
   // ── Fetch from backend ───────────────────────────────────────────────────
   const { data: pageData, loading, error } = useAboutPage();
 
-  // Use API about-section data, fall back to hardcoded defaults
-  const about = pageData?.about ?? FALLBACK;
+  // Prefer the prop from the parent, then API about-section data, then hardcoded defaults
+  const about = data ?? pageData?.about ?? FALLBACK;
 
   const eyebrow    = about.eyebrow    ?? FALLBACK.eyebrow;
   const headline   = about.headline   ?? FALLBACK.headline;
@@ -62,7 +66,7 @@ const EmpavaiAbout: FC = () => {
   };
 
   // ── Loading state ────────────────────────────────────────────────────────
-  if (loading) {
+  if (loading && !data) {
     return (
       <section style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ fontFamily: "sans-serif", fontSize: 13, color: "#aaa", letterSpacing: "0.1em" }}>Loading…</p>
