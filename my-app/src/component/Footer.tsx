@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FooterLink {
   label: string;
   href: string;
+  children?: FooterLink[];   // products listed under a category
+  moreCount?: number;        // how many more products that category has
+}
+
+interface LinkGroup {
+  brand: string;
+  color: string;
+  links: FooterLink[];
 }
 
 interface FooterProps {
   brandName?: string;
   tagline?: string;
   description?: string;
-  logoSrc?: string;           // ← NEW: path to your logo image
+  logoSrc?: string;           // path to your logo image
+  // Fallback links — only used if the backend cannot be reached
   nithyasoooriLinks?: FooterLink[];
   enjomLinks?: FooterLink[];
   crystalWisdomLinks?: FooterLink[];
@@ -26,6 +37,162 @@ interface FooterProps {
   phone?: string;
   address?: string;
   copyright?: string;
+}
+
+// ─── API / routing config ─────────────────────────────────────────────────────
+const API_URL             = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const CATEGORIES_ENDPOINT = '/api/categories';
+const PRODUCTS_ENDPOINT   = '/api/products';
+const STONES_ENDPOINT     = '/api/stones';          // ⬅ change if your stone router is mounted elsewhere
+
+const COLLECTIONS_PATH    = '/collections';         // category page  → /collections/<slug>
+const PRODUCT_PATH        = '/product';             // product page   → /product/<slug>
+const STONE_PATH          = '/crystal-wisdom';      // ⬅ stone page   → /crystal-wisdom/<slug>  (change to match your route)
+
+const MAX_PRODUCTS_PER_CATEGORY = 4;                // products shown under each category
+const MAX_STONES                = 8;                // stones listed in the footer
+const PAGE_LIMIT                = 100;
+const MAX_PAGES                 = 50;
+
+const PALETTE   = ['#9b6fe0', '#c084fc', '#7b2fbf', '#7c5cbf', '#a78bda'];
+const UNBRANDED = 'Other Collections';   // label for categories that have no brand set
+
+// ─── Legal links (bottom bar) ─────────────────────────────────────────────────
+const LEGAL_LINKS: { label: string; href: string }[] = [
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+  { label: 'Terms of Use',   href: '/terms-of-use' },
+            // no page yet — update when you add one
+];
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+// Handles [..] or { data: [..] } or { data: { stones: [..] } } or { stones: [..] } etc.
+const toArray = (res: any): any[] => {
+  if (Array.isArray(res)) return res;
+  const candidates = [
+    res?.data, res?.data?.categories, res?.data?.products, res?.data?.stones,
+    res?.categories, res?.products, res?.stones,
+  ];
+  for (const c of candidates) if (Array.isArray(c)) return c;
+  return [];
+};
+
+// Fetches EVERY page of an endpoint (also works when the API has no pagination)
+async function fetchAll(endpoint: string): Promise<any[]> {
+  const all: any[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await fetch(`${API_URL}${endpoint}?page=${page}&limit=${PAGE_LIMIT}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${endpoint} failed (${res.status})`);
+    const json = await res.json();
+
+    all.push(...toArray(json));
+
+    const meta = json?.pagination ?? json?.meta ?? json;
+    totalPages = Number(meta?.totalPages ?? meta?.pages ?? 1) || 1;
+    page++;
+  } while (page <= totalPages && page <= MAX_PAGES);
+
+  // Remove duplicates in case the API ignored the page parameter
+  return Array.from(new Map(all.map((x, i) => [x?._id ?? `i-${i}`, x])).values());
+}
+
+const byOrder = (a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0);
+const norm    = (s: any) => String(s ?? '').trim().toLowerCase();
+
+// product.category can be an id, a category name, or a populated object
+const belongsTo = (p: any, cat: any): boolean => {
+  const raw = p?.category;
+  const candidates = [raw?._id, raw?.name, raw?.slug, typeof raw === 'string' ? raw : undefined]
+    .map(norm)
+    .filter(Boolean);
+  return candidates.some(c => c === norm(cat._id) || c === norm(cat.name) || c === norm(cat.slug));
+};
+
+// Categories → grouped by brand, each category carrying ITS OWN products
+function buildCategoryGroups(categories: any[], products: any[] | null): LinkGroup[] {
+  const map = new Map<string, LinkGroup>();
+
+  // featured products first
+  const sortedProducts = (products ?? [])
+    .filter(p => p?.isActive !== false && p?.name && p?.slug)
+    .sort((a, b) => Number(!!b.isFeatured) - Number(!!a.isFeatured));
+
+  categories
+    .filter(c => c?.isActive !== false && c?.name)
+    .sort(byOrder)
+    .forEach(c => {
+      const brand = String(c.brand ?? '').trim() || UNBRANDED;
+      let group = map.get(brand);
+      if (!group) {
+        group = { brand, color: c.brandColor || PALETTE[map.size % PALETTE.length], links: [] };
+        map.set(brand, group);
+      }
+
+      const catProducts = sortedProducts.filter(p => belongsTo(p, c));
+
+      group.links.push({
+        label: c.name,
+        href: `${COLLECTIONS_PATH}/${encodeURIComponent(c.slug || c.name)}`,
+        children: catProducts
+          .slice(0, MAX_PRODUCTS_PER_CATEGORY)
+          .map(p => ({ label: p.name, href: `${PRODUCT_PATH}/${p.slug}` })),
+        moreCount: Math.max(0, catProducts.length - MAX_PRODUCTS_PER_CATEGORY),
+      });
+    });
+
+  return Array.from(map.values());
+}
+
+// Stones → active only, capped
+function buildStoneLinks(stones: any[]): FooterLink[] {
+  return stones
+    .filter(s => s?.isActive !== false && s?.name && s?.slug)
+    .sort(byOrder)
+    .slice(0, MAX_STONES)
+    .map(s => ({ label: s.name, href: `${STONE_PATH}/${s.slug}` }));
+}
+
+// ─── Fetch all three lists once, independently (one failing doesn't break the rest) ─
+// null = request failed, [] = succeeded but empty
+interface FooterData {
+  loading: boolean;
+  categories: any[] | null;
+  products: any[] | null;
+  stones: any[] | null;
+}
+
+function useFooterData(): FooterData {
+  const [data, setData] = useState<FooterData>({ loading: true, categories: null, products: null, stones: null });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const [c, p, s] = await Promise.allSettled([
+        fetchAll(CATEGORIES_ENDPOINT),
+        fetchAll(PRODUCTS_ENDPOINT),
+        fetchAll(STONES_ENDPOINT),
+      ]);
+      if (cancelled) return;
+
+      [c, p, s].forEach((r, i) => {
+        if (r.status === 'rejected') console.warn(`[Footer] ${['categories', 'products', 'stones'][i]} failed:`, r.reason);
+      });
+
+      setData({
+        loading: false,
+        categories: c.status === 'fulfilled' ? c.value : null,
+        products:   p.status === 'fulfilled' ? p.value : null,
+        stones:     s.status === 'fulfilled' ? s.value : null,
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  return data;
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -129,40 +296,83 @@ const SocialBtn: React.FC<{ href: string; label: string; children: React.ReactNo
 };
 
 // ─── Animated Link ────────────────────────────────────────────────────────────
-const FooterNavLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+// variant "main" = dash + normal text (categories, stones, pages)
+// variant "sub"  = smaller, dimmer text with no dash (products nested under a category)
+const FooterNavLink: React.FC<{ href: string; variant?: 'main' | 'sub'; children: React.ReactNode }> = ({
+  href, variant = 'main', children,
+}) => {
   const [hovered, setHovered] = useState(false);
-  return (
-    <a
-      href={href}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: '8px',
-        fontFamily: "'Crimson Text', Georgia, serif",
-        fontSize: '15px', fontWeight: 400,
-        color: hovered ? '#c4a8dc' : 'rgba(255,255,255,0.55)',
-        textDecoration: 'none',
-        letterSpacing: '0.3px',
-        transition: 'color 0.22s ease',
-        cursor: 'pointer',
-      }}
-    >
-      <span style={{
-        display: 'inline-block', width: '14px', height: '1px',
-        background: hovered ? '#c4a8dc' : 'rgba(255,255,255,0.2)',
-        transition: 'all 0.22s ease',
-        transform: hovered ? 'scaleX(1.6)' : 'scaleX(1)',
-        transformOrigin: 'left',
-        flexShrink: 0,
-      }} />
+  const isSub = variant === 'sub';
+
+  const style: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: '8px',
+    fontFamily: "'Crimson Text', Georgia, serif",
+    fontSize: isSub ? '14px' : '15px',
+    fontWeight: 400,
+    lineHeight: 1.35,
+    color: hovered
+      ? '#c4a8dc'
+      : isSub ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.62)',
+    textDecoration: 'none',
+    letterSpacing: '0.3px',
+    transition: 'color 0.22s ease',
+    cursor: 'pointer',
+  };
+
+  const inner = (
+    <>
+      {!isSub && (
+        <span style={{
+          display: 'inline-block', width: '14px', height: '1px',
+          background: hovered ? '#c4a8dc' : 'rgba(255,255,255,0.2)',
+          transition: 'all 0.22s ease',
+          transform: hovered ? 'scaleX(1.6)' : 'scaleX(1)',
+          transformOrigin: 'left',
+          flexShrink: 0,
+        }} />
+      )}
       {children}
-    </a>
+    </>
   );
+
+  const handlers = {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+  };
+
+  // Internal paths use Next.js <Link> (no page reload)
+  return href.startsWith('/')
+    ? <Link href={href} style={style} {...handlers}>{inner}</Link>
+    : <a href={href} style={style} {...handlers}>{inner}</a>;
+};
+
+// ─── Legal link (bottom bar) ──────────────────────────────────────────────────
+// Same look as before; real routes use Next.js <Link>, "#" stays a plain anchor
+const LegalLink: React.FC<{ href: string; children: React.ReactNode }> = ({ href, children }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const style: React.CSSProperties = {
+    fontFamily: "'Crimson Text', Georgia, serif",
+    fontSize: '12px',
+    color: hovered ? 'rgba(196,168,220,0.7)' : 'rgba(255,255,255,0.25)',
+    textDecoration: 'none',
+    letterSpacing: '0.5px',
+    transition: 'color 0.2s ease',
+  };
+
+  const handlers = {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+  };
+
+  return href.startsWith('/')
+    ? <Link href={href} style={style} {...handlers}>{children}</Link>
+    : <a href={href} style={style} {...handlers}>{children}</a>;
 };
 
 // ─── Section heading inside footer columns ────────────────────────────────────
 const BrandHeading: React.FC<{ color: string; children: React.ReactNode }> = ({ color, children }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '16px' }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '18px' }}>
     <span style={{ display: 'block', width: '3px', height: '12px', borderRadius: '2px', background: color, flexShrink: 0 }} />
     <h4 style={{
       fontFamily: "'Playfair Display', Georgia, serif",
@@ -174,6 +384,17 @@ const BrandHeading: React.FC<{ color: string; children: React.ReactNode }> = ({ 
   </div>
 );
 
+// ─── Column title ─────────────────────────────────────────────────────────────
+const ColumnTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3 style={{
+    fontFamily: "'Playfair Display', Georgia, serif",
+    fontSize: '13px', fontWeight: 600, color: '#f5f0ff',
+    letterSpacing: '3px', textTransform: 'uppercase',
+    margin: '0 0 24px',
+    lineHeight: 1.2,
+  }}>{children}</h3>
+);
+
 // ─── Footer Component ─────────────────────────────────────────────────────────
 const Footer: React.FC<FooterProps> = ({
   brandName = 'EMPAVAI',
@@ -181,6 +402,7 @@ const Footer: React.FC<FooterProps> = ({
   description = 'A sanctuary for those who believe beauty still has something urgent to say. Curating the finest intersection of ancient traditions and contemporary vision.',
   logoSrc = '/images/logo.jpeg',   // ← swap with your actual logo path e.g. '/logo.svg'
 
+  // ── Fallbacks (used only when the API is unreachable) ──
   nithyasoooriLinks = [
     { label: 'Crystal Art Decor',    href: '/collections/product-1' },
     { label: 'Aura Trinket Trays',   href: '/collections/aura-trinket-trays' },
@@ -215,6 +437,27 @@ const Footer: React.FC<FooterProps> = ({
   const [emailHovered, setEmailHovered] = useState(false);
   const [phoneHovered, setPhoneHovered] = useState(false);
 
+  // ── Live data from the backend ──────────────────────────────────────────────
+  const data = useFooterData();
+
+  const fallbackGroups: LinkGroup[] = [
+    { brand: 'Nithyasoori', color: '#9b6fe0', links: nithyasoooriLinks },
+    { brand: 'Enjem',       color: '#c084fc', links: enjomLinks },
+  ];
+
+  const categoryGroups: LinkGroup[] =
+    data.loading ? [] : data.categories === null ? fallbackGroups : buildCategoryGroups(data.categories, data.products);
+
+  const stoneLinks: FooterLink[] =
+    data.loading ? [] : data.stones === null ? crystalWisdomLinks : buildStoneLinks(data.stones);
+
+  // Hide a column only when the backend answered and it's genuinely empty
+  const showCollections = data.loading || categoryGroups.length > 0;
+  const showStones      = data.loading || stoneLinks.length > 0;
+
+  // Skip the sub-heading when there is a single unbranded group (it would just repeat "Collections")
+  const hideGroupHeading = categoryGroups.length === 1 && categoryGroups[0].brand === UNBRANDED;
+
   return (
     <footer style={{
       width: '100%',
@@ -223,10 +466,40 @@ const Footer: React.FC<FooterProps> = ({
       overflow: 'hidden',
       fontFamily: "'Playfair Display', Georgia, serif",
     }}>
-      {/* Font import */}
+      {/* Font import + responsive layout */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
         @keyframes ft-pulse { 0%,100%{opacity:0.04} 50%{opacity:0.07} }
+
+        /* Desktop: brand | collections (wide) | crystal wisdom | sacred spaces */
+        .ft-grid {
+          display: grid;
+          grid-template-columns: minmax(230px, 1.1fr) minmax(0, 2.3fr) minmax(150px, 0.9fr) minmax(150px, 0.9fr);
+          gap: clamp(32px, 4vw, 56px);
+          align-items: start;
+          margin-bottom: clamp(48px, 6vw, 72px);
+        }
+        /* Brands (Nithyasoori / Enjem …) sit side by side inside the Collections column */
+        .ft-brands {
+          column-count: 2;
+          column-gap: clamp(32px, 4vw, 56px);
+        }
+        .ft-brand-group {
+          break-inside: avoid;
+          -webkit-column-break-inside: avoid;
+          margin-bottom: 36px;
+        }
+
+        /* Tablet: brand + collections full width, then the two small columns side by side */
+        @media (max-width: 1100px) {
+          .ft-grid { grid-template-columns: 1fr 1fr; }
+          .ft-col-brand, .ft-col-collections { grid-column: 1 / -1; }
+        }
+        /* Mobile: single column */
+        @media (max-width: 640px) {
+          .ft-grid { grid-template-columns: 1fr; }
+          .ft-brands { column-count: 1; }
+        }
       `}</style>
 
       {/* Decorative background orbs */}
@@ -244,15 +517,10 @@ const Footer: React.FC<FooterProps> = ({
       }}>
 
         {/* ── Top row: Brand + Links ────────────────────────────────────── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 'clamp(36px, 5vw, 64px)',
-          marginBottom: 'clamp(48px, 6vw, 72px)',
-        }}>
+        <div className="ft-grid">
 
           {/* ── Brand column ─────────────────────────────────────────────── */}
-          <div style={{ gridColumn: 'span 1' }}>
+          <div className="ft-col-brand">
 
             {/* Tagline above logo */}
             <p style={{
@@ -262,7 +530,7 @@ const Footer: React.FC<FooterProps> = ({
               margin: '0 0 14px', opacity: 0.85,
             }}>{tagline}</p>
 
-            {/* ── Logo image — replaces the old <h2> text wordmark ── */}
+            {/* ── Logo image ── */}
             <FooterLogo src={logoSrc} brandName={brandName} />
 
             {/* Ornamental divider */}
@@ -275,7 +543,7 @@ const Footer: React.FC<FooterProps> = ({
               fontFamily: "'Crimson Text', Georgia, serif",
               fontSize: '15px', fontStyle: 'italic',
               color: 'rgba(255,255,255,0.45)', lineHeight: 1.75,
-              margin: '0 0 28px', maxWidth: '280px',
+              margin: '0 0 28px', maxWidth: '300px',
             }}>{description}</p>
 
             {/* Contact details */}
@@ -320,49 +588,65 @@ const Footer: React.FC<FooterProps> = ({
             </div>
           </div>
 
-          {/* ── Collections column: Nithyasoori + Enjem ──────────────────── */}
-          <div>
-            <h3 style={{
-              fontFamily:"'Playfair Display', Georgia, serif",
-              fontSize:'13px', fontWeight:600, color:'#f5f0ff',
-              letterSpacing:'3px', textTransform:'uppercase',
-              margin:'0 0 24px',
-            }}>Collections</h3>
+          {/* ── Collections column: categories (by brand) with their products underneath ── */}
+          {showCollections && (
+            <div className="ft-col-collections">
+              <ColumnTitle>Collections</ColumnTitle>
 
-            <BrandHeading color="#9b6fe0">Nithyasoori</BrandHeading>
-            <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginBottom:'28px' }}>
-              {nithyasoooriLinks.map(l => <FooterNavLink key={l.label} href={l.href}>{l.label}</FooterNavLink>)}
+              <div className="ft-brands">
+                {categoryGroups.map(group => (
+                  <div key={group.brand} className="ft-brand-group">
+                    {!hideGroupHeading && <BrandHeading color={group.color}>{group.brand}</BrandHeading>}
+
+                    <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+                      {group.links.map(cat => (
+                        <div key={cat.href}>
+                          {/* Category */}
+                          <FooterNavLink href={cat.href}>{cat.label}</FooterNavLink>
+
+                          {/* Its products */}
+                          {cat.children && cat.children.length > 0 && (
+                            <div style={{
+                              display:'flex', flexDirection:'column', gap:'8px',
+                              margin:'10px 0 0 6px',
+                              paddingLeft:'16px',
+                              borderLeft:`1px solid ${group.color}55`,
+                            }}>
+                              {cat.children.map(p => (
+                                <FooterNavLink key={p.href} href={p.href} variant="sub">{p.label}</FooterNavLink>
+                              ))}
+                              {!!cat.moreCount && cat.moreCount > 0 && (
+                                <FooterNavLink href={cat.href} variant="sub">+ {cat.moreCount} more</FooterNavLink>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
 
-            <BrandHeading color="#c084fc">Enjem</BrandHeading>
-            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {enjomLinks.map(l => <FooterNavLink key={l.label} href={l.href}>{l.label}</FooterNavLink>)}
+          {/* ── Crystal Wisdom column: stones ─────────────────────────────── */}
+          {showStones && (
+            <div>
+              <ColumnTitle>Crystal Wisdom</ColumnTitle>
+
+              <BrandHeading color="#7b2fbf">Sacred Stones</BrandHeading>
+              <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                {stoneLinks.map(l => <FooterNavLink key={l.href} href={l.href}>{l.label}</FooterNavLink>)}
+                {data.stones !== null && stoneLinks.length > 0 && (
+                  <FooterNavLink href={STONE_PATH}>View all →</FooterNavLink>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* ── Crystal Wisdom column ─────────────────────────────────────── */}
-          <div>
-            <h3 style={{
-              fontFamily:"'Playfair Display', Georgia, serif",
-              fontSize:'13px', fontWeight:600, color:'#f5f0ff',
-              letterSpacing:'3px', textTransform:'uppercase',
-              margin:'0 0 24px',
-            }}>Crystal Wisdom</h3>
-
-            <BrandHeading color="#7b2fbf">Crystal Wisdom</BrandHeading>
-            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {crystalWisdomLinks.map(l => <FooterNavLink key={l.label} href={l.href}>{l.label}</FooterNavLink>)}
-            </div>
-          </div>
+          )}
 
           {/* ── Sacred Spaces column + newsletter ────────────────────────── */}
           <div>
-            <h3 style={{
-              fontFamily:"'Playfair Display', Georgia, serif",
-              fontSize:'13px', fontWeight:600, color:'#f5f0ff',
-              letterSpacing:'3px', textTransform:'uppercase',
-              margin:'0 0 24px',
-            }}>Sacred Spaces</h3>
+            <ColumnTitle>Sacred Spaces</ColumnTitle>
 
             <BrandHeading color="#7c5cbf">Connect</BrandHeading>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
@@ -370,52 +654,7 @@ const Footer: React.FC<FooterProps> = ({
             </div>
 
             {/* Newsletter mini CTA */}
-            <div style={{ marginTop:'36px' }}>
-              <p style={{
-                fontFamily:"'Crimson Text', Georgia, serif",
-                fontSize:'13px', fontStyle:'italic',
-                color:'rgba(255,255,255,0.35)',
-                margin:'0 0 12px', letterSpacing:'0.3px',
-              }}>Stay in the loop</p>
-              <div style={{ display:'flex', height:'42px' }}>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  style={{
-                    flex:1, minWidth:0,
-                    background:'rgba(255,255,255,0.05)',
-                    border:'1px solid rgba(255,255,255,0.12)',
-                    borderRight:'none',
-                    color:'rgba(255,255,255,0.7)',
-                    fontFamily:"'Crimson Text', serif",
-                    fontSize:'14px',
-                    padding:'0 14px',
-                    outline:'none',
-                    borderRadius:0,
-                  }}
-                />
-                <button
-                  style={{
-                    background:'#7B4BA0',
-                    border:'none',
-                    color:'#fff',
-                    padding:'0 16px',
-                    cursor:'pointer',
-                    fontFamily:"'Inter', sans-serif",
-                    fontSize:'10px',
-                    fontWeight:600,
-                    letterSpacing:'2px',
-                    textTransform:'uppercase',
-                    flexShrink:0,
-                    transition:'background 0.2s ease',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background='#5A3A7D'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background='#7B4BA0'; }}
-                >
-                  Join
-                </button>
-              </div>
-            </div>
+           
           </div>
 
         </div>
@@ -436,17 +675,8 @@ const Footer: React.FC<FooterProps> = ({
           }}>{copyright}</p>
 
           <div style={{ display:'flex', gap:'24px', flexWrap:'wrap' }}>
-            {['Privacy Policy', 'Terms of Use', 'Accessibility'].map(txt => (
-              <a key={txt} href="#" style={{
-                fontFamily:"'Crimson Text', Georgia, serif",
-                fontSize:'12px', color:'rgba(255,255,255,0.25)',
-                textDecoration:'none', letterSpacing:'0.5px',
-                transition:'color 0.2s ease',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color='rgba(196,168,220,0.7)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color='rgba(255,255,255,0.25)'; }}>
-                {txt}
-              </a>
+            {LEGAL_LINKS.map(l => (
+              <LegalLink key={l.label} href={l.href}>{l.label}</LegalLink>
             ))}
           </div>
         </div>

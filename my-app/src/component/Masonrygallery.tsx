@@ -5,42 +5,42 @@ const faqs = [
     id: 1,
     question: "What materials do you use in your artworks?",
     answer: "Each piece is handcrafted using ethically sourced natural materials — raw crystals, amethyst, golden resin, copper wire, fired clay, and hand-painted slate. We source minerals directly from artisan suppliers across India, Brazil, and Morocco.",
-    img: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=600&q=80",
+    img: "/images/faq/1.jpg",
     category: "Materials",
   },
   {
     id: 2,
     question: "How long does it take to receive my order?",
     answer: "Every piece is made to order and requires 7–14 business days for creation, followed by 3–7 days for secure packaging and shipping. We ship worldwide with full tracking and insurance included.",
-    img: "https://images.unsplash.com/photo-1549887534-1541e9326642?w=600&q=80",
+    img: "/images/faq/2.jpg",
     category: "Shipping",
   },
   {
     id: 3,
     question: "Are the artworks one-of-a-kind originals?",
     answer: "Yes — every piece in our collection is a unique original. We never mass produce. Some series are created in limited editions of 3–5, always clearly marked, and each edition is individually signed and numbered by the artist.",
-    img: "https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=600&q=80",
+    img: "/images/faq/3.jpg",
     category: "Originals",
   },
   {
     id: 4,
     question: "Can I commission a custom piece?",
     answer: "Absolutely. We welcome custom commissions — from size and material requests to entirely bespoke concepts. Reach out via our contact form with your vision and we'll schedule a consultation within 48 hours.",
-    img: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?w=600&q=80",
+    img: "/images/faq/4.jpg",
     category: "Commission",
   },
   {
     id: 5,
     question: "What is your return and care policy?",
     answer: "We offer a 14-day return window for undamaged pieces in original packaging. Each artwork comes with a care guide tailored to its materials. Crystals should be kept away from direct sunlight; resin pieces cleaned with a dry soft cloth.",
-    img: "https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=600&q=80",
+    img: "/images/faq/5.jpg",
     category: "Returns",
   },
   {
     id: 6,
     question: "Do you offer certificates of authenticity?",
     answer: "Every artwork ships with a hand-signed Certificate of Authenticity, including the artist's name, creation date, materials used, and edition number if applicable. Digital NFT certificates are also available on request.",
-    img: "https://images.unsplash.com/photo-1596548438137-d51ea5c83ca5?w=600&q=80",
+    img: "/images/faq/6.png",
     category: "Authenticity",
   },
 ];
@@ -388,7 +388,7 @@ const [openId, setOpenId] = useState<number | null>(1);
 
         <div className="faq-footer">
           <p>Still have questions? We'd love to hear from you.</p>
-          <a href="#contact" className="faq-cta">
+          <a href="/contact" className="faq-cta">
             Contact Us
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />

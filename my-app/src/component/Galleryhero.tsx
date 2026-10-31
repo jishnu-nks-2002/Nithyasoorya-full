@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useGalleryHero } from '../../api/useGalleryHero';
 import "./Galleryhero.css"
 
@@ -45,25 +46,27 @@ const DEFAULT_SLIDES: SlideItem[] = [
 ];
 
 const GalleryHero: React.FC = () => {
+  const router = useRouter();
+
   // ── Fetch from backend ──────────────────────────────────────
   const { data, loading, error } = useGalleryHero();
 
   // Use API data if available, otherwise fall back to defaults
-const slides: SlideItem[]  = data?.slides?.length  ? (data.slides as SlideItem[])  : DEFAULT_SLIDES;
+  const slides: SlideItem[]  = data?.slides?.length  ? (data.slides as SlideItem[])  : DEFAULT_SLIDES;
   const verticalText: string = data?.verticalText    ?? 'Museum Exhibition 2024';
   const leftLabel: string    = data?.leftLabel       ?? 'FEATURED EXHIBITION';
   const ctaText: string      = data?.ctaText         ?? 'EXPLORE THE COLLECTION';
-  const ctaLink: string      = data?.ctaLink         ?? '#collection';
+  const ctaLink: string      = data?.ctaLink         ?? '/collection';
   const autoPlayInterval     = data?.autoPlayInterval ?? 5000;
 
   // ── Slider state ────────────────────────────────────────────
-  const [currentSlide, setCurrentSlide]     = useState(0);
+  const [currentSlide, setCurrentSlide]       = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [dotProgress, setDotProgress]       = useState(0);
+  const [dotProgress, setDotProgress]         = useState(0);
 
-  const videoRefs       = useRef<(HTMLVideoElement | null)[]>([]);
-  const imageTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rafRef          = useRef<number | null>(null);
+  const videoRefs        = useRef<(HTMLVideoElement | null)[]>([]);
+  const imageTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef           = useRef<number | null>(null);
   const progressStartRef = useRef<number>(0);
 
   // Reset to slide 0 whenever the API data arrives with new slides
@@ -146,11 +149,25 @@ const slides: SlideItem[]  = data?.slides?.length  ? (data.slides as SlideItem[]
     }, 500);
   };
 
+  // ── CTA: navigate to the collection page ────────────────────
   const handleCtaClick = () => {
-    if (ctaLink.startsWith('#')) {
-      document.querySelector(ctaLink)?.scrollIntoView({ behavior: 'smooth' });
+    let link = (ctaLink || '').trim();
+
+    // The backend may return "#collection" or "collection" – always send these
+    // to the collection page. Change '/collection' if your route is named differently.
+    if (!link || link === '#collection' || link === 'collection') {
+      link = '/collections';
+    }
+
+    if (link.startsWith('/')) {
+      // Internal page – client-side navigation, no reload
+      router.push(link);
+    } else if (link.startsWith('#')) {
+      // Same-page section
+      document.querySelector(link)?.scrollIntoView({ behavior: 'smooth' });
     } else {
-      window.location.href = ctaLink;
+      // External URL
+      window.location.href = link;
     }
   };
 

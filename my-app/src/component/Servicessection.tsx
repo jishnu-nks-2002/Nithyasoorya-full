@@ -2,9 +2,11 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import type { JSX } from "react"
+import Link from "next/link"
 
 /* ───────────────── TYPES ───────────────── */
 interface Service {
+  id: string
   num: string
   title: string
   bullets: string[]
@@ -16,19 +18,57 @@ interface Service {
 }
 
 /* ───────────────── CONFIG ───────────────── */
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
-const MAX_CARDS = 4 // categories shown in the stack
+const API = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000").replace(/\/$/, "")
+const COLLECTIONS_PAGE = "/collections" // ⬅ the page the button navigates to
 const ACCENTS = ["#7B4BA0", "#9B6CC0"]
 const BGS = ["#ffffff", "#f3eef8"]
 
+const PAGE_LIMIT = 100 // items requested per page
+const MAX_PAGES = 50 // safety cap
+
 const CARD_HEIGHT = 550
 const STACK_OFFSET = 28
+const MAX_STACK_PEEK = 3 // how many cards peek out behind the top one (keeps the stack small with many categories)
 const CARD_SCROLL_PX = 520
 
 /* ───────────────── API HELPERS ───────────────── */
-// Handles [..] or { data: [..] } or { categories: [..] } / { products: [..] }
-const toArray = (res: any): any[] =>
-  Array.isArray(res) ? res : res?.data ?? res?.categories ?? res?.products ?? []
+// Handles [..] or { data: [..] } or { data: { categories: [..] } } or { categories: [..] } / { products: [..] }
+const toArray = (res: any): any[] => {
+  if (Array.isArray(res)) return res
+  const candidates = [
+    res?.data,
+    res?.data?.categories,
+    res?.data?.products,
+    res?.categories,
+    res?.products,
+  ]
+  for (const c of candidates) if (Array.isArray(c)) return c
+  return []
+}
+
+// Fetches EVERY page of an endpoint (also works when the API has no pagination)
+async function fetchAll(endpoint: string): Promise<any[]> {
+  const all: any[] = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const res = await fetch(`${API}${endpoint}?page=${page}&limit=${PAGE_LIMIT}`, {
+      cache: "no-store",
+    })
+    if (!res.ok) throw new Error(`${endpoint} failed (${res.status})`)
+    const json = await res.json()
+
+    all.push(...toArray(json))
+
+    const meta = json?.pagination ?? json?.meta ?? json
+    totalPages = Number(meta?.totalPages ?? meta?.pages ?? 1) || 1
+    page++
+  } while (page <= totalPages && page <= MAX_PAGES)
+
+  // Remove duplicates in case the API ignored the page parameter
+  return Array.from(new Map(all.map((x, i) => [x?._id ?? `i-${i}`, x])).values())
+}
 
 // Handles "uploads/x.jpg", "/uploads/x.jpg", full URLs, or { url } objects
 const imgUrl = (img: any): string => {
@@ -37,9 +77,18 @@ const imgUrl = (img: any): string => {
   return /^(https?:|data:)/.test(u) ? u : `${API}/${u.replace(/^\/+/, "")}`
 }
 
-// product.category can be an id string or a populated object
-const productCategoryId = (p: any): string =>
-  String(p?.category?._id ?? p?.category ?? "")
+const norm = (s: any): string => String(s ?? "").trim().toLowerCase()
+
+// product.category can be an id, a category name, or a populated object
+const belongsTo = (p: any, cat: any): boolean => {
+  const raw = p?.category
+  const candidates = [raw?._id, raw?.name, raw?.slug, typeof raw === "string" ? raw : undefined]
+    .map(norm)
+    .filter(Boolean)
+  return candidates.some(
+    (c) => c === norm(cat._id) || c === norm(cat.name) || c === norm(cat.slug)
+  )
+}
 
 // Primary image first, then the rest
 const productImages = (p: any): string[] => {
@@ -49,16 +98,18 @@ const productImages = (p: any): string[] => {
 }
 
 async function fetchServices(): Promise<Service[]> {
-  const [catRes, prodRes] = await Promise.all([
-    fetch(`${API}/api/categories`).then((r) => r.json()),
-    fetch(`${API}/api/products`).then((r) => r.json()),
+  const [catList, products] = await Promise.all([
+    fetchAll("/api/categories"),
+    fetchAll("/api/products"),
   ])
 
-  const categories = toArray(catRes).slice(0, MAX_CARDS)
-  const products = toArray(prodRes)
+  // ALL active categories, in the admin's order
+  const categories = catList
+    .filter((c) => c?.isActive !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
   return categories.map((cat, i) => {
-    const catProducts = products.filter((p) => productCategoryId(p) === String(cat._id))
+    const catProducts = products.filter((p) => belongsTo(p, cat))
 
     // Carousel: category image first, then product images (max 6, de-duplicated)
     const images = Array.from(
@@ -66,6 +117,7 @@ async function fetchServices(): Promise<Service[]> {
     ).slice(0, 6)
 
     return {
+      id: String(cat._id ?? cat.slug ?? i),
       num: String(i + 1).padStart(2, "0"),
       title: cat.name,
       bullets: catProducts.slice(0, 3).map((p) => p.name ?? p.title).filter(Boolean),
@@ -75,7 +127,7 @@ async function fetchServices(): Promise<Service[]> {
       images,
       accent: ACCENTS[i % ACCENTS.length],
       bg: BGS[i % BGS.length],
-      href: `/products?category=${cat.slug ?? cat._id}`,
+      href: COLLECTIONS_PAGE,
     }
   })
 }
@@ -85,7 +137,7 @@ function FillButton({ accent, href }: { accent: string; href: string }): JSX.Ele
   const [hovered, setHovered] = useState(false)
 
   return (
-    <a
+    <Link
       href={href}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -123,7 +175,7 @@ function FillButton({ accent, href }: { accent: string; href: string }): JSX.Ele
         }}
       />
       <span style={{ position: "relative", zIndex: 1 }}>VIEW COLLECTION</span>
-    </a>
+    </Link>
   )
 }
 
@@ -214,11 +266,12 @@ function ServiceCard({
 
   const eased = 1 - Math.pow(1 - local, 4)
 
-  const settledTop = (totalCards - 1 - index) * STACK_OFFSET
+  // Depth is capped so the stack never grows taller than the screen, however many categories exist
+  const depth = Math.min(totalCards - 1 - index, MAX_STACK_PEEK)
+  const settledTop = depth * STACK_OFFSET
   const ENTRY_DISTANCE = 520
   const currentTop = settledTop + ENTRY_DISTANCE * (1 - eased)
 
-  const depth = totalCards - 1 - index
   const scale = 1 - depth * 0.018
   const opacity = eased > 0.02 ? 1 : 0
 
@@ -234,6 +287,7 @@ function ServiceCard({
         transformOrigin: "top center",
         opacity,
         willChange: "transform, opacity",
+        pointerEvents: opacity === 0 ? "none" : "auto",
       }}
     >
       <div
@@ -316,7 +370,7 @@ export default function ServicesSection(): JSX.Element {
 
   const count = Math.max(services.length, 1)
   const sectionHeight = `calc(100vh + ${count * CARD_SCROLL_PX}px)`
-  const stackHeight = CARD_HEIGHT + (count - 1) * STACK_OFFSET + 24
+  const stackHeight = CARD_HEIGHT + Math.min(count - 1, MAX_STACK_PEEK) * STACK_OFFSET + 24
 
   return (
     <section
@@ -354,10 +408,13 @@ export default function ServicesSection(): JSX.Element {
         <div style={{ position: "relative", height: stackHeight }}>
           {loading && <p style={{ color: "#6b5b7b" }}>Loading…</p>}
           {error && <p style={{ color: "#a33" }}>Couldn’t load categories.</p>}
+          {!loading && !error && services.length === 0 && (
+            <p style={{ color: "#6b5b7b" }}>New collections coming soon.</p>
+          )}
 
           {services.map((service, i) => (
             <ServiceCard
-              key={service.num}
+              key={service.id}
               service={service}
               index={i}
               totalCards={services.length}

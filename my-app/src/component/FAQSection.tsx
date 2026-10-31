@@ -1,4 +1,6 @@
+"use client";
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 
 const faqs = [
   {
@@ -45,9 +47,9 @@ const faqs = [
   },
 ];
 
-function AnimatedImage({ src, alt }: { src: string; alt: string }) {  
+function AnimatedImage({ src, alt }: { src: string; alt: string }) {
   const ref = useRef<HTMLImageElement | null>(null);
- const prevSrc = useRef<string | null>(null);
+  const prevSrc = useRef<string | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -88,7 +90,7 @@ function FAQItem({ faq, isOpen, onToggle, index }: {
   onToggle: () => void;
   index: number;
 }) {
-const contentRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [height, setHeight] = useState(0);
   const [hovered, setHovered] = useState(false);
 
@@ -217,7 +219,7 @@ const contentRef = useRef<HTMLDivElement | null>(null);
 }
 
 export default function FAQSection() {
-const [openId, setOpenId] = useState<number | null>(1);
+  const [openId, setOpenId] = useState<number | null>(1);
   const activeItem = faqs.find(f => f.id === openId) || faqs[0];
   const accentItem = faqs[(faqs.findIndex(f => f.id === activeItem.id) + 2) % faqs.length];
 
@@ -321,23 +323,23 @@ const [openId, setOpenId] = useState<number | null>(1);
           color: #888; margin-bottom: 20px; font-style: italic;
         }
         .faq-cta {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 13px 28px;
-  color: #6b3fa0;
-  font-family: 'Jost', sans-serif; font-size: 9px;
-  font-weight: 500; letter-spacing: 0.26em;
-  text-transform: uppercase; border: 1.5px solid #6b3fa0;
-  border-radius: 3px; cursor: pointer;
-  text-decoration: none;
-  background: linear-gradient(to right, #6b3fa0 50%, transparent 50%);
-  background-size: 200% 100%;
-  background-position: right center;
-  transition: background-position 0.4s cubic-bezier(0.4,0,0.2,1), color 0.4s ease;
-}
-.faq-cta:hover {
-  background-position: left center;
-  color: #fff;
-}
+          display: inline-flex; align-items: center; gap: 10px;
+          padding: 13px 28px;
+          color: #6b3fa0;
+          font-family: 'Jost', sans-serif; font-size: 9px;
+          font-weight: 500; letter-spacing: 0.26em;
+          text-transform: uppercase; border: 1.5px solid #6b3fa0;
+          border-radius: 3px; cursor: pointer;
+          text-decoration: none;
+          background: linear-gradient(to right, #6b3fa0 50%, transparent 50%);
+          background-size: 200% 100%;
+          background-position: right center;
+          transition: background-position 0.4s cubic-bezier(0.4,0,0.2,1), color 0.4s ease;
+        }
+        .faq-cta:hover {
+          background-position: left center;
+          color: #fff;
+        }
 
         @media (max-width: 820px) {
           .faq-root { padding: 48px 24px 60px; }
@@ -389,12 +391,13 @@ const [openId, setOpenId] = useState<number | null>(1);
 
         <div className="faq-footer">
           <p>Still have questions? We'd love to hear from you.</p>
-          <a href="#contact" className="faq-cta">
+          {/* Navigates to the contact page */}
+          <Link href="/contact" className="faq-cta">
             Contact Us
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
             </svg>
-          </a>
+          </Link>
         </div>
 
       </section>

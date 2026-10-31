@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useReviews } from '../../api/reviews'; // ✅ adjust path to match your project
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Review {
@@ -15,9 +14,10 @@ interface Review {
   initials: string;
   productImage: string;
   productLabel?: string;
+  order?: number;
 }
 
-// ─── Default / Fallback Data ──────────────────────────────────────────────────
+// ─── Fallback data (only shown if the backend cannot be reached) ──────────────
 const defaultReviews: Review[] = [
   {
     id: 1,
@@ -81,14 +81,79 @@ const defaultReviews: Review[] = [
   },
 ];
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// ─── API config ───────────────────────────────────────────────────────────────
+const API_URL          = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const REVIEWS_ENDPOINT = '/api/reviews';   // ⬅ change if your router is mounted somewhere else
+const PAGE_LIMIT       = 100;              // items requested per page
+const MAX_PAGES        = 50;               // safety cap
 
 // ── Resolve image URL (handles both local /uploads/... and external URLs) ─────
 const resolveImage = (src: string) => {
   if (!src) return '';
-  if (src.startsWith('http')) return src;
-  return `${API_URL}${src}`;
+  if (/^(https?:|data:|blob:)/.test(src)) return src;
+  return `${API_URL}${src.startsWith('/') ? '' : '/'}${src}`;
 };
+
+const makeInitials = (name = '') =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('') || '?';
+
+// Makes sure every review has all the fields the UI needs
+const normalizeReview = (r: any): Review => ({
+  _id:          r._id,
+  id:           r.id,
+  name:         r.name || 'Anonymous',
+  title:        r.title || '',
+  location:     r.location || '',
+  rating:       Math.max(0, Math.min(5, Number(r.rating) || 5)),
+  review:       r.review || r.text || r.comment || '',
+  initials:     r.initials || makeInitials(r.name),
+  productImage: r.productImage || r.image || '',
+  productLabel: r.productLabel || '',
+  order:        typeof r.order === 'number' ? r.order : undefined,
+});
+
+// Pulls the array out of common response shapes
+const extractList = (json: any): any[] => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.reviews)) return json.data.reviews;
+  if (Array.isArray(json?.reviews)) return json.reviews;
+  return [];
+};
+
+// Fetches EVERY page of reviews (also works when the API has no pagination)
+async function fetchAllReviews(): Promise<Review[]> {
+  const all: any[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await fetch(`${API_URL}${REVIEWS_ENDPOINT}?page=${page}&limit=${PAGE_LIMIT}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Reviews request failed (${res.status})`);
+    const json = await res.json();
+
+    all.push(...extractList(json));
+
+    const meta = json?.pagination || json?.meta || json;
+    totalPages = Number(meta?.totalPages ?? meta?.pages ?? 1) || 1;
+    page++;
+  } while (page <= totalPages && page <= MAX_PAGES);
+
+  // Remove duplicates in case the API ignored the page parameter
+  const unique = Array.from(new Map(all.map((r, i) => [r._id ?? `i-${i}`, r])).values());
+
+  // Respect the admin's drag-and-drop order (stable sort keeps API order if no `order`)
+  return unique
+    .map(normalizeReview)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
 const Stars: React.FC<{ rating: number }> = ({ rating }) => (
@@ -192,10 +257,11 @@ const ReviewCard: React.FC<{
             height: isMobile ? '220px' : '100%',
             flexShrink: 0,
             overflow: 'hidden',
+            background: '#f0eaf6',
           }}
         >
           <img
-            src={resolveImage(review.productImage)}
+            src={resolveImage(review.productImage) || undefined}
             alt={review.productLabel || 'Product'}
             style={{
               width: '100%',
@@ -368,12 +434,10 @@ const ReviewSection: React.FC<{
   subheading = 'Words from those who have experienced the collection firsthand.',
   autoPlayInterval = 5500,
 }) => {
-  // ── Fetch from API — falls back to defaultReviews if API returns empty ──
-  const { data: apiReviews, loading, error } = useReviews();
-  const reviews: Review[] =
-    !loading && apiReviews && apiReviews.length > 0
-      ? apiReviews
-      : defaultReviews;
+  // ── Fetch ALL reviews from the backend ──────────────────────────────────
+  const [apiReviews, setApiReviews] = useState<Review[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
   const [current, setCurrent]   = useState(0);
   const [progress, setProgress] = useState(0);
@@ -381,12 +445,32 @@ const ReviewSection: React.FC<{
   const autoRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const rafRef   = useRef<number | null>(null);
   const startRef = useRef<number>(0);
-  const total    = reviews.length;
 
-  // Reset to first slide when live data arrives
   useEffect(() => {
-    setCurrent(0);
-  }, [apiReviews]);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const list = await fetchAllReviews();
+        if (cancelled) return;
+        setApiReviews(list);
+        setError(null);
+        setCurrent(0);
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error('[ReviewSection] fetch failed:', e);
+        setError(e?.message || 'Failed to load reviews');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // Backend reviews are used as-is; samples only appear if the request failed
+  const reviews: Review[] = error ? defaultReviews : apiReviews;
+  const total = reviews.length;
 
   // Responsive check
   useEffect(() => {
@@ -417,6 +501,7 @@ const ReviewSection: React.FC<{
 
   const startAutoplay = useCallback(() => {
     clearAll();
+    if (total < 2) return;
     startProgress();
     autoRef.current = setInterval(() => {
       setCurrent(c => (c + 1) % total);
@@ -424,12 +509,15 @@ const ReviewSection: React.FC<{
     }, autoPlayInterval);
   }, [clearAll, startProgress, autoPlayInterval, total]);
 
+  // Restart autoplay whenever the number of reviews changes (e.g. when API data arrives)
   useEffect(() => {
+    if (loading) return;
     startAutoplay();
     return clearAll;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, startAutoplay, clearAll]);
 
   const goTo = (idx: number) => {
+    if (total === 0) return;
     clearAll();
     setCurrent((idx + total) % total);
     startAutoplay();
@@ -488,6 +576,9 @@ const ReviewSection: React.FC<{
       </section>
     );
   }
+
+  // ── Nothing to show (backend reachable but no reviews yet) ──────────────
+  if (total === 0) return null;
 
   return (
     <section
@@ -662,11 +753,12 @@ const ReviewSection: React.FC<{
                       width: '100%',
                       height: '240px',
                       overflow: 'hidden',
+                      background: '#f0eaf6',
                     }}
                   >
                     <img
-                      src={resolveImage(reviews[current].productImage)}
-                      alt={reviews[current].productLabel}
+                      src={resolveImage(reviews[current].productImage) || undefined}
+                      alt={reviews[current].productLabel || 'Product'}
                       style={{
                         width: '100%',
                         height: '100%',
@@ -790,7 +882,7 @@ const ReviewSection: React.FC<{
             /* ── Desktop: stacked absolute cards ── */
             reviews.map((r, i) => (
               <ReviewCard
-                key={r._id || r.id}
+                key={r._id || r.id || i}
                 review={r}
                 position={getPosition(i)}
                 isMobile={false}
@@ -799,140 +891,142 @@ const ReviewSection: React.FC<{
           )}
         </div>
 
-        {/* Navigation */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '28px',
-            marginTop: isMobile ? '32px' : '40px',
-          }}
-        >
-          <button
-            onClick={() => goTo(current - 1)}
-            aria-label="Previous"
+        {/* Navigation (hidden when there is only one review) */}
+        {total > 1 && (
+          <div
             style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '50%',
-              border: '1.5px solid rgba(123,75,160,0.3)',
-              background: 'transparent',
-              color: '#7B4BA0',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.25s ease',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => {
-              const b = e.currentTarget;
-              b.style.background = '#7B4BA0';
-              b.style.borderColor = '#7B4BA0';
-              b.style.color = '#fff';
-            }}
-            onMouseLeave={e => {
-              const b = e.currentTarget;
-              b.style.background = 'transparent';
-              b.style.borderColor = 'rgba(123,75,160,0.3)';
-              b.style.color = '#7B4BA0';
+              gap: '28px',
+              marginTop: isMobile ? '32px' : '40px',
             }}
           >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
+            <button
+              onClick={() => goTo(current - 1)}
+              aria-label="Previous"
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                border: '1.5px solid rgba(123,75,160,0.3)',
+                background: 'transparent',
+                color: '#7B4BA0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.25s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                const b = e.currentTarget;
+                b.style.background = '#7B4BA0';
+                b.style.borderColor = '#7B4BA0';
+                b.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                const b = e.currentTarget;
+                b.style.background = 'transparent';
+                b.style.borderColor = 'rgba(123,75,160,0.3)';
+                b.style.color = '#7B4BA0';
+              }}
             >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-
-          {/* Progress dots */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {reviews.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goTo(i)}
-                aria-label={`Review ${i + 1}`}
-                style={{
-                  position: 'relative',
-                  width: i === current ? '30px' : '8px',
-                  height: '8px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  background: 'rgba(123,75,160,0.18)',
-                  overflow: 'hidden',
-                  transition:
-                    'width 0.4s cubic-bezier(0.25,0.1,0.25,1)',
-                }}
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
               >
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: i === current ? `${progress}%` : '0%',
-                    background: '#7B4BA0',
-                    borderRadius: '4px',
-                    transition:
-                      i === current ? 'none' : 'width 0.3s ease',
-                  }}
-                />
-              </button>
-            ))}
-          </div>
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
 
-          <button
-            onClick={() => goTo(current + 1)}
-            aria-label="Next"
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '50%',
-              border: '1.5px solid rgba(123,75,160,0.3)',
-              background: 'transparent',
-              color: '#7B4BA0',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.25s ease',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => {
-              const b = e.currentTarget;
-              b.style.background = '#7B4BA0';
-              b.style.borderColor = '#7B4BA0';
-              b.style.color = '#fff';
-            }}
-            onMouseLeave={e => {
-              const b = e.currentTarget;
-              b.style.background = 'transparent';
-              b.style.borderColor = 'rgba(123,75,160,0.3)';
-              b.style.color = '#7B4BA0';
-            }}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
+            {/* Progress dots */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {reviews.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  aria-label={`Review ${i + 1}`}
+                  style={{
+                    position: 'relative',
+                    width: i === current ? '30px' : '8px',
+                    height: '8px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    background: 'rgba(123,75,160,0.18)',
+                    overflow: 'hidden',
+                    transition:
+                      'width 0.4s cubic-bezier(0.25,0.1,0.25,1)',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      height: '100%',
+                      width: i === current ? `${progress}%` : '0%',
+                      background: '#7B4BA0',
+                      borderRadius: '4px',
+                      transition:
+                        i === current ? 'none' : 'width 0.3s ease',
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => goTo(current + 1)}
+              aria-label="Next"
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                border: '1.5px solid rgba(123,75,160,0.3)',
+                background: 'transparent',
+                color: '#7B4BA0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.25s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => {
+                const b = e.currentTarget;
+                b.style.background = '#7B4BA0';
+                b.style.borderColor = '#7B4BA0';
+                b.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                const b = e.currentTarget;
+                b.style.background = 'transparent';
+                b.style.borderColor = 'rgba(123,75,160,0.3)';
+                b.style.color = '#7B4BA0';
+              }}
             >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         <p
           style={{

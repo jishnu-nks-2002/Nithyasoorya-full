@@ -13,6 +13,9 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
+// ✅ FIX: fallback so the request never goes to "undefined/api/contact"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 const studios = [
   { city: "KERALA STUDIO",  address: "Thrissur, Kerala", postal: "India — 680 001", mapHref: "#" },
   { city: "ONLINE ATELIER", address: "Worldwide Shipping", postal: "empavai.com",    mapHref: "#" },
@@ -72,14 +75,28 @@ export default function ConnectSection() {
   const [selectOpen, setSelectOpen] = useState(false);
 
   const handleSubmit = async () => {
-    if (!form.name || !form.email) return;
+    // ✅ FIX: basic email validation before hitting the server
+    if (!form.name || !/\S+@\S+\.\S+/.test(form.email)) {
+      setError("Please enter your name and a valid email address.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, form);
+      await axios.post(`${API_URL}/api/contact`, form);
       setSubmitted(true);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      // ✅ FIX: show the real reason instead of a generic message
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error ??
+          (err.request
+            ? "Cannot reach the server. Please try again later."
+            : "Something went wrong. Please try again.")
+        );
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -297,7 +314,7 @@ export default function ConnectSection() {
 
           <div className="cs-hero-img">
             <Image
-              src="https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=900&q=85"
+              src="/images/faq/4.jpg"
               alt="Studio artwork"
               fill
               sizes="420px"

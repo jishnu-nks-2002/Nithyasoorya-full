@@ -14,9 +14,10 @@ interface Review {
   initials: string;
   productImage: string;
   productLabel?: string;
+  order?: number;
 }
 
-// ─── Fallback data ────────────────────────────────────────────────────────────
+// ─── Fallback data (only shown if the backend cannot be reached) ──────────────
 const defaultReviews: Review[] = [
   {
     id: 1,
@@ -75,13 +76,80 @@ const defaultReviews: Review[] = [
   },
 ];
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// ─── API config ───────────────────────────────────────────────────────────────
+const API_URL          = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+const REVIEWS_ENDPOINT = '/api/reviews';   // ⬅ change if your router is mounted somewhere else
+const PAGE_LIMIT       = 100;              // items requested per page
+const MAX_PAGES        = 50;               // safety cap
+
+const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=800&q=80';
 
 const resolveImage = (src?: string): string => {
-  if (!src) return 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=800&q=80';
-  if (src.startsWith('http')) return src;
-  return `${API_URL}${src}`;
+  if (!src) return PLACEHOLDER_IMG;
+  if (/^(https?:|data:|blob:)/.test(src)) return src;
+  return `${API_URL}${src.startsWith('/') ? '' : '/'}${src}`;
 };
+
+const makeInitials = (name = '') =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('') || '?';
+
+// Makes sure every review has all the fields the UI needs
+const normalizeReview = (r: any): Review => ({
+  _id:          r._id,
+  id:           r.id,
+  name:         r.name || 'Anonymous',
+  title:        r.title || '',
+  location:     r.location || '',
+  rating:       Math.max(0, Math.min(5, Number(r.rating) || 5)),
+  review:       r.review || r.text || r.comment || '',
+  initials:     r.initials || makeInitials(r.name),
+  productImage: r.productImage || r.image || '',
+  productLabel: r.productLabel || '',
+  order:        typeof r.order === 'number' ? r.order : undefined,
+});
+
+// Pulls the array out of common response shapes
+const extractList = (json: any): any[] => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.reviews)) return json.data.reviews;
+  if (Array.isArray(json?.reviews)) return json.reviews;
+  return [];
+};
+
+// Fetches EVERY page of reviews (also works when the API has no pagination)
+async function fetchAllReviews(): Promise<Review[]> {
+  const all: any[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await fetch(`${API_URL}${REVIEWS_ENDPOINT}?page=${page}&limit=${PAGE_LIMIT}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Reviews request failed (${res.status})`);
+    const json = await res.json();
+
+    all.push(...extractList(json));
+
+    const meta = json?.pagination || json?.meta || json;
+    totalPages = Number(meta?.totalPages ?? meta?.pages ?? 1) || 1;
+    page++;
+  } while (page <= totalPages && page <= MAX_PAGES);
+
+  // Remove duplicates in case the API ignored the page parameter
+  const unique = Array.from(new Map(all.map((r, i) => [r._id ?? `i-${i}`, r])).values());
+
+  // Respect the admin's drag-and-drop order (stable sort keeps API order if no `order`)
+  return unique
+    .map(normalizeReview)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
 const Stars: React.FC<{ rating: number; size?: number }> = ({ rating, size = 14 }) => (
@@ -126,6 +194,18 @@ const LoadingState = () => (
       color: '#bbb', fontStyle: 'italic', letterSpacing: '0.1em',
     }}>Loading reviews…</p>
   </div>
+);
+
+// ─── Empty state (backend reachable, but no reviews yet) ──────────────────────
+const EmptyState = () => (
+  <section style={{ width: '100%', background: '#f8f5fc', padding: 'clamp(72px,9vw,112px) 24px', textAlign: 'center' }}>
+    <h2 style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, color: '#1a0f2e', margin: '0 0 12px' }}>
+      What Collectors Say
+    </h2>
+    <p style={{ fontFamily: "'Crimson Text',Georgia,serif", fontSize: 18, fontStyle: 'italic', color: '#9b82c4', margin: 0 }}>
+      Reviews will appear here soon.
+    </p>
+  </section>
 );
 
 // ─── Nav button helpers ───────────────────────────────────────────────────────
@@ -317,16 +397,35 @@ const CompactCard: React.FC<{ review: Review; onClick: () => void; index: number
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const TestimonialsSection: React.FC = () => {
-  // If you have a useReviews hook, swap these lines:
-  // const { data: apiReviews, loading, error } = useReviews();
-  const apiReviews: Review[] = [];
-  const loading = false;
-  const error = false;
+  // ── Fetch ALL reviews from the backend ──────────────────────────────────
+  const [apiReviews, setApiReviews] = useState<Review[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
-  const reviews: Review[] =
-    !loading && Array.isArray(apiReviews) && apiReviews.length > 0
-      ? apiReviews
-      : defaultReviews;
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const list = await fetchAllReviews();
+        if (cancelled) return;
+        setApiReviews(list);
+        setError(null);
+        setActive(0);
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error('[TestimonialsSection] fetch failed:', e);
+        setError(e?.message || 'Failed to load reviews');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // Backend reviews are used as-is; samples only appear if the request failed
+  const reviews: Review[] = error ? defaultReviews : apiReviews;
 
   const [active, setActive]     = useState(0);
   const [progress, setProgress] = useState(0);
@@ -366,7 +465,7 @@ const TestimonialsSection: React.FC = () => {
 
   const startAutoplay = useCallback((total: number) => {
     clearAll();
-    if (total === 0) return;
+    if (total < 2) return;
     startProgress();
     autoRef.current = setInterval(() => {
       setActive(c => (c + 1) % total);
@@ -374,10 +473,11 @@ const TestimonialsSection: React.FC = () => {
     }, INTERVAL);
   }, [clearAll, startProgress]);
 
+  // Restarts whenever the number of reviews changes (e.g. when API data arrives)
   useEffect(() => {
-    if (reviews.length > 0) startAutoplay(reviews.length);
+    if (!loading) startAutoplay(reviews.length);
     return clearAll;
-  }, [reviews.length]); // eslint-disable-line
+  }, [loading, reviews.length]); // eslint-disable-line
 
   const goTo = (idx: number) => {
     if (reviews.length === 0) return;
@@ -385,6 +485,9 @@ const TestimonialsSection: React.FC = () => {
     setActive(((idx % reviews.length) + reviews.length) % reviews.length);
     startAutoplay(reviews.length);
   };
+
+  // Backend reachable but no reviews yet
+  if (!loading && reviews.length === 0) return <EmptyState />;
 
   if (!isWide) return (
     <NarrowLayout reviews={reviews} loading={loading} error={!!error} />
@@ -435,14 +538,16 @@ const TestimonialsSection: React.FC = () => {
             <h2 style={{ fontFamily:"'Playfair Display',Georgia,serif",fontSize:'clamp(32px,4vw,54px)',fontWeight:700,color:'#1a0f2e',margin:0,lineHeight:1.1,letterSpacing:'-0.02em' }}>
               What Collectors Say
             </h2>
-            <div style={{ display:'flex',alignItems:'center',gap:14 }}>
-              <span style={{ fontFamily:"'Crimson Text',serif",fontSize:13,color:'#bbb',letterSpacing:'2.5px',fontStyle:'italic' }}>
-                {String(safeActive + 1).padStart(2,'0')} — {String(reviews.length).padStart(2,'0')}
-              </span>
-              <div style={{ width:120,height:2,background:'rgba(123,75,160,0.12)',borderRadius:2,overflow:'hidden' }}>
-                <div style={{ height:'100%',background:'#7B4BA0',borderRadius:2,width:`${progress}%`,transition:'none' }} />
+            {reviews.length > 0 && (
+              <div style={{ display:'flex',alignItems:'center',gap:14 }}>
+                <span style={{ fontFamily:"'Crimson Text',serif",fontSize:13,color:'#bbb',letterSpacing:'2.5px',fontStyle:'italic' }}>
+                  {String(safeActive + 1).padStart(2,'0')} — {String(reviews.length).padStart(2,'0')}
+                </span>
+                <div style={{ width:120,height:2,background:'rgba(123,75,160,0.12)',borderRadius:2,overflow:'hidden' }}>
+                  <div style={{ height:'100%',background:'#7B4BA0',borderRadius:2,width:`${progress}%`,transition:'none' }} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -452,7 +557,7 @@ const TestimonialsSection: React.FC = () => {
             {featured && (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '3fr 2fr',
+                gridTemplateColumns: rightCards.length > 0 ? '3fr 2fr' : '1fr',
                 gridTemplateRows: '1fr 1fr',
                 gap: 20,
                 width: '100%',
@@ -463,7 +568,7 @@ const TestimonialsSection: React.FC = () => {
                 <div style={{ gridRow: '1 / 3', minHeight: 0 }}>
                   <FeaturedCard review={featured} />
                 </div>
-                {/* Two compact cards stacked on the right */}
+                {/* Compact cards stacked on the right */}
                 {rightCards.map((r, i) => (
                   <CompactCard
                     key={r._id ?? r.id ?? i}
@@ -476,24 +581,26 @@ const TestimonialsSection: React.FC = () => {
             )}
 
             {/* ── Dot nav ── */}
-            <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:36 }}>
-              {reviews.map((_, i) => (
-                <button key={i} onClick={() => goTo(i)} aria-label={`Review ${i+1}`}
-                  style={{
-                    position:'relative', width: i===safeActive ? 32 : 8, height:8,
-                    borderRadius:4, border:'none', padding:0, cursor:'pointer',
-                    background:'rgba(123,75,160,0.18)', overflow:'hidden',
-                    transition:'width 0.4s cubic-bezier(0.25,0.1,0.25,1)',
-                  }}>
-                  <span style={{
-                    position:'absolute',top:0,left:0,height:'100%',
-                    width: i===safeActive ? `${progress}%` : '0%',
-                    background:'#7B4BA0', borderRadius:4,
-                    transition: i===safeActive ? 'none' : 'width 0.3s ease',
-                  }} />
-                </button>
-              ))}
-            </div>
+            {reviews.length > 1 && (
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:36,flexWrap:'wrap' }}>
+                {reviews.map((_, i) => (
+                  <button key={i} onClick={() => goTo(i)} aria-label={`Review ${i+1}`}
+                    style={{
+                      position:'relative', width: i===safeActive ? 32 : 8, height:8,
+                      borderRadius:4, border:'none', padding:0, cursor:'pointer',
+                      background:'rgba(123,75,160,0.18)', overflow:'hidden',
+                      transition:'width 0.4s cubic-bezier(0.25,0.1,0.25,1)',
+                    }}>
+                    <span style={{
+                      position:'absolute',top:0,left:0,height:'100%',
+                      width: i===safeActive ? `${progress}%` : '0%',
+                      background:'#7B4BA0', borderRadius:4,
+                      transition: i===safeActive ? 'none' : 'width 0.3s ease',
+                    }} />
+                  </button>
+                ))}
+              </div>
+            )}
 
             {error && (
               <p style={{ textAlign:'center',marginTop:16,fontFamily:"'Crimson Text',serif",fontSize:11,color:'#c9a0dc',opacity:0.7,fontStyle:'italic' }}>
@@ -536,14 +643,19 @@ const NarrowLayout: React.FC<{ reviews: Review[]; loading: boolean; error: boole
   }, []);
 
   const startAuto = useCallback(() => {
-    clearAll(); startProgress();
+    clearAll();
+    if (total < 2) return;
+    startProgress();
     autoRef.current = setInterval(() => {
       setCurrent(c => (c + 1) % total); startProgress();
     }, INTERVAL);
   }, [clearAll, startProgress, total]);
 
   useEffect(() => { if (total > 0) { startAuto(); } return clearAll; }, [total]); // eslint-disable-line
-  const goTo = (i: number) => { clearAll(); setCurrent(((i%total)+total)%total); startAuto(); };
+  const goTo = (i: number) => {
+    if (total === 0) return;
+    clearAll(); setCurrent(((i%total)+total)%total); startAuto();
+  };
 
   if (loading) return <LoadingState />;
 
@@ -593,21 +705,23 @@ const NarrowLayout: React.FC<{ reviews: Review[]; loading: boolean; error: boole
         </div>
 
         {/* Nav */}
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:24,marginTop:28 }}>
-          <button onClick={() => goTo(current-1)} style={navBtnStyle} onMouseEnter={e=>applyHov(e.currentTarget,true)} onMouseLeave={e=>applyHov(e.currentTarget,false)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div style={{ display:'flex',gap:8 }}>
-            {reviews.map((_,i) => (
-              <button key={i} onClick={() => goTo(i)} style={{ position:'relative',width:i===current?30:8,height:8,borderRadius:4,border:'none',padding:0,cursor:'pointer',background:'rgba(123,75,160,0.18)',overflow:'hidden',transition:'width 0.4s cubic-bezier(0.25,0.1,0.25,1)' }}>
-                <span style={{ position:'absolute',top:0,left:0,height:'100%',width:i===current?`${progress}%`:'0%',background:'#7B4BA0',borderRadius:4,transition:i===current?'none':'width 0.3s ease' }} />
-              </button>
-            ))}
+        {total > 1 && (
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:24,marginTop:28 }}>
+            <button onClick={() => goTo(current-1)} aria-label="Previous" style={navBtnStyle} onMouseEnter={e=>applyHov(e.currentTarget,true)} onMouseLeave={e=>applyHov(e.currentTarget,false)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div style={{ display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center' }}>
+              {reviews.map((_,i) => (
+                <button key={i} onClick={() => goTo(i)} aria-label={`Review ${i+1}`} style={{ position:'relative',width:i===safeIdx?30:8,height:8,borderRadius:4,border:'none',padding:0,cursor:'pointer',background:'rgba(123,75,160,0.18)',overflow:'hidden',transition:'width 0.4s cubic-bezier(0.25,0.1,0.25,1)' }}>
+                  <span style={{ position:'absolute',top:0,left:0,height:'100%',width:i===safeIdx?`${progress}%`:'0%',background:'#7B4BA0',borderRadius:4,transition:i===safeIdx?'none':'width 0.3s ease' }} />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => goTo(current+1)} aria-label="Next" style={navBtnStyle} onMouseEnter={e=>applyHov(e.currentTarget,true)} onMouseLeave={e=>applyHov(e.currentTarget,false)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
-          <button onClick={() => goTo(current+1)} style={navBtnStyle} onMouseEnter={e=>applyHov(e.currentTarget,true)} onMouseLeave={e=>applyHov(e.currentTarget,false)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
+        )}
         {error && <p style={{ textAlign:'center',marginTop:12,fontFamily:"'Crimson Text',serif",fontSize:11,color:'#c9a0dc',opacity:0.7,fontStyle:'italic' }}>(Showing sample reviews)</p>}
       </div>
     </section>
