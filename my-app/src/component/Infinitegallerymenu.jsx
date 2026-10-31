@@ -383,9 +383,9 @@ const galleryItems = [
   { id:7,  type:'image', image:'/images/p-4.jpeg', link:'#', title:'Tender Light',    description:'Painting' },
   { id:8,  type:'image', image:'/images/p-5.jpeg', link:'#', title:'Bloom Study IV',  description:'Photography' },
   { id:9,  type:'image', image:'/images/p-6.jpeg', link:'#', title:'Surface Tension', description:'Installation' },
-  { id:10, type:'image', image:'/images/p-7.jpeg', link:'#', title:'Minimal Act',     description:'Sculpture' },
-  { id:11, type:'image', image:'/images/p-8.jpeg', link:'#', title:'Nocturne',        description:'Painting' },
-  { id:12, type:'image', image:'/images/p-9.jpeg', link:'#', title:'The Wound Heals', description:'Mixed Media' },
+  { id:10, type:'image', image:'/images/p-7.webp', link:'#', title:'Minimal Act',     description:'Sculpture' },
+  { id:11, type:'image', image:'/images/p-8.webp', link:'#', title:'Nocturne',        description:'Painting' },
+  { id:12, type:'image', image:'/images/p-9.webp', link:'#', title:'The Wound Heals', description:'Mixed Media' },
 ];
 
 // ─── CSS injected once ────────────────────────────────────────────────────────

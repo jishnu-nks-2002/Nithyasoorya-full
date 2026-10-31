@@ -12,74 +12,81 @@ interface Service {
   images: string[]
   accent: string
   bg: string
+  href: string
 }
 
-/* ───────────────── DATA ───────────────── */
-const SERVICES: Service[] = [
-  {
-    num: "01",
-    title: "Structure Your Activity",
-    bullets: [
-      "List your offers, formats, and pricing tiers.",
-      "Calculate the time you can sell each month.",
-      "Compare profitability across offerings to focus on what works.",
-    ],
-    result: "A crystal-clear map of your business model.",
-    images: [
-      "/images/p-1.jpeg",
-      "/images/p-2.jpeg",
-      "/images/p-3.jpeg",
-    ],
-    accent: "#7B4BA0",
-    bg: "#ffffff",
-  },
-  {
-    num: "02",
-    title: "Simulate Costs & Remuneration",
-    bullets: [
-      "Set your target monthly or annual salary.",
-      "Enter your professional fees, charges & investments.",
-      "Automatically obtain your break-even thresholds.",
-    ],
-    result: "A coherent budget that reveals whether your choices are viable.",
-    images: [
-      "/images/p-4.jpeg",
-      "/images/p-5.jpeg",
-      "/images/p-6.jpeg",
-    ],
-    accent: "#9B6CC0",
-    bg: "#f3eef8",
-  },
-  {
-    num: "03",
-    title: "Pilot With Clarity",
-    bullets: [
-      "Track your monthly performance in real time.",
-      "Adjust strategy based on live data insights.",
-      "Make decisions backed by clear financial visibility.",
-    ],
-    result: "Full control over your business direction at every stage.",
-    images: [
-      "/images/p-7.webp",
-      "/images/p-8.webp",
-      "/images/p-9.webp",
-    ],
-    accent: "#7B4BA0",
-    bg: "#ffffff",
-  },
-]
+/* ───────────────── CONFIG ───────────────── */
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+const MAX_CARDS = 4 // categories shown in the stack
+const ACCENTS = ["#7B4BA0", "#9B6CC0"]
+const BGS = ["#ffffff", "#f3eef8"]
 
-/* ───────────────── CONSTANTS ───────────────── */
 const CARD_HEIGHT = 550
 const STACK_OFFSET = 28
 const CARD_SCROLL_PX = 520
 
+/* ───────────────── API HELPERS ───────────────── */
+// Handles [..] or { data: [..] } or { categories: [..] } / { products: [..] }
+const toArray = (res: any): any[] =>
+  Array.isArray(res) ? res : res?.data ?? res?.categories ?? res?.products ?? []
+
+// Handles "uploads/x.jpg", "/uploads/x.jpg", full URLs, or { url } objects
+const imgUrl = (img: any): string => {
+  const u: string = typeof img === "string" ? img : img?.url ?? img?.path ?? ""
+  if (!u) return ""
+  return /^(https?:|data:)/.test(u) ? u : `${API}/${u.replace(/^\/+/, "")}`
+}
+
+// product.category can be an id string or a populated object
+const productCategoryId = (p: any): string =>
+  String(p?.category?._id ?? p?.category ?? "")
+
+// Primary image first, then the rest
+const productImages = (p: any): string[] => {
+  const imgs: any[] = p?.images ?? []
+  const sorted = [...imgs].sort((a, b) => Number(!!b?.isPrimary) - Number(!!a?.isPrimary))
+  return sorted.map(imgUrl).filter(Boolean)
+}
+
+async function fetchServices(): Promise<Service[]> {
+  const [catRes, prodRes] = await Promise.all([
+    fetch(`${API}/api/categories`).then((r) => r.json()),
+    fetch(`${API}/api/products`).then((r) => r.json()),
+  ])
+
+  const categories = toArray(catRes).slice(0, MAX_CARDS)
+  const products = toArray(prodRes)
+
+  return categories.map((cat, i) => {
+    const catProducts = products.filter((p) => productCategoryId(p) === String(cat._id))
+
+    // Carousel: category image first, then product images (max 6, de-duplicated)
+    const images = Array.from(
+      new Set([imgUrl(cat.image), ...catProducts.flatMap(productImages)].filter(Boolean))
+    ).slice(0, 6)
+
+    return {
+      num: String(i + 1).padStart(2, "0"),
+      title: cat.name,
+      bullets: catProducts.slice(0, 3).map((p) => p.name ?? p.title).filter(Boolean),
+      result:
+        cat.description ||
+        `${catProducts.length} product${catProducts.length === 1 ? "" : "s"} in this collection.`,
+      images,
+      accent: ACCENTS[i % ACCENTS.length],
+      bg: BGS[i % BGS.length],
+      href: `/products?category=${cat.slug ?? cat._id}`,
+    }
+  })
+}
+
 /* ───────────────── PREMIUM FILL BUTTON ───────────────── */
-function FillButton({ accent }: { accent: string }): JSX.Element {
+function FillButton({ accent, href }: { accent: string; href: string }): JSX.Element {
   const [hovered, setHovered] = useState(false)
 
   return (
-    <div
+    <a
+      href={href}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -100,9 +107,9 @@ function FillButton({ accent }: { accent: string }): JSX.Element {
         color: hovered ? "#fff" : accent,
         transition: "color 0.35s ease",
         width: "fit-content",
+        textDecoration: "none",
       }}
     >
-      {/* sliding fill */}
       <span
         style={{
           position: "absolute",
@@ -115,11 +122,8 @@ function FillButton({ accent }: { accent: string }): JSX.Element {
           zIndex: 0,
         }}
       />
-
-      <span style={{ position: "relative", zIndex: 1 }}>
-        LEARN MORE
-      </span>
-    </div>
+      <span style={{ position: "relative", zIndex: 1 }}>VIEW COLLECTION</span>
+    </a>
   )
 }
 
@@ -136,7 +140,7 @@ function useSmoothScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
 
       const rect = ref.current.getBoundingClientRect()
       const total = ref.current.offsetHeight - window.innerHeight
-      const raw = Math.max(0, Math.min(1, -rect.top / total))
+      const raw = total > 0 ? Math.max(0, Math.min(1, -rect.top / total)) : 0
 
       progressRef.current += (raw - progressRef.current) * 0.08
       setProgress(progressRef.current)
@@ -156,11 +160,16 @@ function ImageCarousel({ images }: { images: string[] }): JSX.Element {
   const [active, setActive] = useState(0)
 
   useEffect(() => {
+    if (images.length < 2) return
     const id = setInterval(() => {
       setActive((p) => (p + 1) % images.length)
     }, 3000)
     return () => clearInterval(id)
   }, [images.length])
+
+  if (images.length === 0) {
+    return <div style={{ width: "100%", height: "100%", background: "#e9e1f1" }} />
+  }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
@@ -259,20 +268,22 @@ function ServiceCard({
             {service.title}
           </h3>
 
-          <ul style={{ margin: 0, paddingLeft: 18, color: "#6b5b7b" }}>
-            {service.bullets.map((b, i) => (
-              <li key={i} style={{ marginBottom: 8 }}>
-                {b}
-              </li>
-            ))}
-          </ul>
+          {service.bullets.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 18, color: "#6b5b7b" }}>
+              {service.bullets.map((b, i) => (
+                <li key={i} style={{ marginBottom: 8 }}>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div style={{ marginTop: 10, fontStyle: "italic", color: service.accent }}>
             ✦ {service.result}
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <FillButton accent={service.accent} />
+            <FillButton accent={service.accent} href={service.href} />
           </div>
         </div>
       </div>
@@ -285,9 +296,27 @@ export default function ServicesSection(): JSX.Element {
   const sectionRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useSmoothScrollProgress(sectionRef)
 
-  const sectionHeight = `calc(100vh + ${SERVICES.length * CARD_SCROLL_PX}px)`
-  const stackHeight =
-    CARD_HEIGHT + (SERVICES.length - 1) * STACK_OFFSET + 24
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchServices()
+      .then((data) => !cancelled && setServices(data))
+      .catch((e) => {
+        console.error("Failed to load categories:", e)
+        if (!cancelled) setError(true)
+      })
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const count = Math.max(services.length, 1)
+  const sectionHeight = `calc(100vh + ${count * CARD_SCROLL_PX}px)`
+  const stackHeight = CARD_HEIGHT + (count - 1) * STACK_OFFSET + 24
 
   return (
     <section
@@ -318,17 +347,20 @@ export default function ServicesSection(): JSX.Element {
               color: "#1a0f2e",
             }}
           >
-            Une approche en <em style={{ color: "#7B4BA0" }}>3 temps</em>
+            Our <em style={{ color: "#7B4BA0" }}>Collections</em>
           </h2>
         </div>
 
         <div style={{ position: "relative", height: stackHeight }}>
-          {SERVICES.map((service, i) => (
+          {loading && <p style={{ color: "#6b5b7b" }}>Loading…</p>}
+          {error && <p style={{ color: "#a33" }}>Couldn’t load categories.</p>}
+
+          {services.map((service, i) => (
             <ServiceCard
               key={service.num}
               service={service}
               index={i}
-              totalCards={SERVICES.length}
+              totalCards={services.length}
               scrollProgress={scrollProgress}
             />
           ))}

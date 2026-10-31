@@ -7,16 +7,47 @@ import { Jost, Cormorant_Garamond } from "next/font/google";
 const jost      = Jost({ weight: ["300","400","500","600"], subsets: ["latin"], display: "swap" });
 const cormorant = Cormorant_Garamond({ weight: ["300","400","500","600"], subsets: ["latin"], display: "swap" });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE    = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const PLACEHOLDER = "/images/placeholder.jpeg";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+// Sanitise image URLs (strips smart-quotes, prepends API_BASE for relative paths)
+function cleanUrl(raw: any): string {
+  const val = typeof raw === "string" ? raw : raw?.url ?? raw?.path ?? "";
+  if (!val || typeof val !== "string") return "";
+  const cleaned = val
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u00A0]/g, " ")
+    .trim();
+  if (!cleaned) return "";
+  if (/^(https?:|data:)/.test(cleaned)) return cleaned;
+  return `${API_BASE}/${cleaned.replace(/^\/+/, "")}`;
+}
+
+// Handles [..] or { data: [..] } / { categories: [..] } / { products: [..] } / { stones: [..] }
+const toArray = (res: any): any[] =>
+  Array.isArray(res) ? res : res?.data ?? res?.categories ?? res?.products ?? res?.stones ?? [];
+
+type CategoryField = string | { _id: string; name: string; slug?: string };
+
+// product.category can be a name, an id, or a populated object
+const productCategoryKeys = (c: CategoryField | undefined | null): string[] => {
+  if (!c) return [];
+  if (typeof c === "string") return [c.toLowerCase()];
+  return [c._id, c.name, c.slug].filter(Boolean).map(s => String(s).toLowerCase());
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Category {
   _id: string; name: string; slug: string;
   brand: string; brandColor: string; subtitle: string; order: number;
+  image?: any;
 }
 interface ProductImage { url: string; alt: string; isPrimary: boolean; }
 interface Product {
-  _id: string; name: string; slug: string; category: string;
+  _id: string; name: string; slug: string; category: CategoryField;
   series: string; priceDisplay: string; price: number;
   isNew: boolean; availability: string;
   images: ProductImage[];
@@ -27,7 +58,7 @@ interface Stone {
 }
 interface StoneLink { label: string; sub: string; href: string; }
 interface CategoryColumn {
-  name: string; slug: string; subtitle: string; color: string;
+  name: string; slug: string; subtitle: string; color: string; image: string;
   products: { name: string; slug: string; isNew: boolean }[];
 }
 interface DropData {
@@ -35,35 +66,44 @@ interface DropData {
   columns: CategoryColumn[];
 }
 
+const productImage = (p: Product): string => {
+  const imgs = p.images ?? [];
+  return cleanUrl((imgs.find(i => i.isPrimary) ?? imgs[0])?.url);
+};
+
 // ── Build dropdown data ────────────────────────────────────────────────────────
 function buildDropData(categories: Category[], products: Product[]): DropData {
-  const byCategory = products.reduce((acc, p) => {
-    const key = p.category || "Uncategorized";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(p);
-    return acc;
-  }, {} as Record<string, Product[]>);
-
   let columns: CategoryColumn[] = [];
+
   if (categories.length > 0) {
-    columns = categories.map((cat) => ({
-      name: cat.name, slug: cat.slug || cat.name,
-      subtitle: cat.subtitle || `Browse ${cat.name}`,
-      color: cat.brandColor || "#7c5cbf",
-      products: (byCategory[cat.name] || []).slice(0, 6).map((p) => ({
-        name: p.name, slug: p.slug, isNew: p.isNew,
-      })),
-    }));
+    columns = [...categories]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((cat) => {
+        const keys = [cat._id, cat.name, cat.slug].filter(Boolean).map(s => String(s).toLowerCase());
+        const catProducts = products.filter(p =>
+          productCategoryKeys(p.category).some(k => keys.includes(k))
+        );
+        return {
+          name: cat.name, slug: cat.slug || cat.name,
+          subtitle: cat.subtitle || `Browse ${cat.name}`,
+          color: cat.brandColor || "#7c5cbf",
+          image: cleanUrl(cat.image) || catProducts.map(productImage).find(Boolean) || PLACEHOLDER,
+          products: catProducts.slice(0, 6).map((p) => ({
+            name: p.name, slug: p.slug, isNew: p.isNew,
+          })),
+        };
+      });
   } else {
-    const seen = new Set<string>();
+    // no categories endpoint data: derive columns from the products themselves
     products.forEach((p) => {
-      if (!seen.has(p.category)) {
-        seen.add(p.category);
-        columns.push({ name: p.category, slug: p.category, subtitle: `Browse ${p.category}`, color: "#7c5cbf", products: [] });
+      const name = typeof p.category === "string" ? p.category : p.category?.name;
+      if (!name) return;
+      let col = columns.find((c) => c.name === name);
+      if (!col) {
+        col = { name, slug: name, subtitle: `Browse ${name}`, color: "#7c5cbf", image: productImage(p) || PLACEHOLDER, products: [] };
+        columns.push(col);
       }
-      const col = columns.find((c) => c.name === p.category);
-      if (col && col.products.length < 6)
-        col.products.push({ name: p.name, slug: p.slug, isNew: p.isNew });
+      if (col.products.length < 6) col.products.push({ name: p.name, slug: p.slug, isNew: p.isNew });
     });
   }
 
@@ -204,9 +244,12 @@ const StoneLinkRow = ({ link }: { link: StoneLink }) => {
 };
 
 // ── Collections mega-dropdown ─────────────────────────────────────────────────
-// KEY FIX: render inside the nav's stacking context using absolute positioning
-// relative to the nav bar itself (not fixed/viewport), then clamp so it
-// never bleeds off the right edge.
+// Same card style as before. Every category gets its own column; the columns
+// wrap onto extra rows (no sideways scrolling) so none are ever cut off.
+const COL_W       = 190;  // width of one category column
+const FIXED_W     = 252;  // featured block (204) + card padding (48)
+const MAX_PER_ROW = 5;
+
 const CollectionsPanel = ({ data, visible, anchorRef }: {
   data: DropData;
   visible: boolean;
@@ -215,30 +258,27 @@ const CollectionsPanel = ({ data, visible, anchorRef }: {
   const [show,    setShow]    = useState(false);
   const [offsetX, setOffsetX] = useState(0);   // left offset relative to anchor
   const [caretX,  setCaretX]  = useState(0);   // caret position inside panel
-  const panelW = 760;
+  const [panelW,  setPanelW]  = useState(760);
 
-  // Recalculate so panel stays inside the viewport while caret stays over trigger
+  // Size the panel to fit all categories, keep it inside the viewport,
+  // and keep the caret over the trigger
   useEffect(() => {
     if (!visible || !anchorRef.current) return;
 
+    const perRow = Math.min(Math.max(data.columns.length, 1), MAX_PER_ROW);
+    const w      = Math.max(760, Math.min(FIXED_W + perRow * COL_W, window.innerWidth - 32));
+    setPanelW(w);
+
     const anchorRect  = anchorRef.current.getBoundingClientRect();
-    const anchorCx    = anchorRect.left + anchorRect.width / 2;  // trigger centre (viewport)
+    const anchorCx    = anchorRect.left + anchorRect.width / 2;
 
-    // Ideal: centre the panel on the trigger
-    const idealLeft   = anchorCx - panelW / 2;
-
-    // Clamp: 16 px from left edge, 16 px from right edge
-    const maxLeft     = window.innerWidth - panelW - 16;
+    const idealLeft   = anchorCx - w / 2;
+    const maxLeft     = window.innerWidth - w - 16;
     const clampedLeft = Math.max(16, Math.min(idealLeft, maxLeft));
 
-    // How far is the panel's left edge from the anchor's left edge?
-    const relLeft     = clampedLeft - anchorRect.left;
-    setOffsetX(relLeft);
-
-    // Caret sits at anchorCx inside the panel
+    setOffsetX(clampedLeft - anchorRect.left);
     setCaretX(anchorCx - clampedLeft - 6);
-
-  }, [visible, anchorRef]);
+  }, [visible, anchorRef, data.columns.length]);
 
   useEffect(() => {
     let raf: number;
@@ -248,12 +288,9 @@ const CollectionsPanel = ({ data, visible, anchorRef }: {
   }, [visible]);
 
   return (
-    // Positioned relative to the anchor <div> inside the nav
     <div
       style={{
         position: "absolute",
-        // sit just below the nav bar: anchor is inside nav (height 64px),
-        // anchor itself has some height; calc from anchor bottom
         top: "calc(100% + 14px)",
         left: offsetX,
         width: panelW,
@@ -265,6 +302,9 @@ const CollectionsPanel = ({ data, visible, anchorRef }: {
         transition: "opacity 0.24s ease, transform 0.26s cubic-bezier(0.4,0,0.2,1)",
       }}
     >
+      {/* invisible bridge so the menu doesn't close while the pointer crosses the gap */}
+      <div style={{ position: "absolute", top: -20, left: 0, right: 0, height: 20 }} />
+
       {/* Caret — always points at the trigger */}
       <div style={{
         position: "absolute",
@@ -325,20 +365,20 @@ const CollectionsPanel = ({ data, visible, anchorRef }: {
           </svg>
         </div>
 
-        {/* Category columns */}
+        {/* Category columns — ALL categories, wrapping onto new rows */}
         <div
-          className="empavai-col-scroll"
           style={{
-            display: "flex", flexDirection: "row", alignItems: "flex-start",
-            flexWrap: "nowrap", overflowX: "auto", gap: 0, flex: 1,
-            scrollbarWidth: "none", msOverflowStyle: "none",
+            flex: 1, minWidth: 0,
+            display: "grid",
+            gridTemplateColumns: `repeat(auto-fill, minmax(${COL_W - 20}px, 1fr))`,
+            rowGap: 26,
+            alignItems: "start",
           }}
         >
           {data.columns.map((col, ci) => (
-            <div key={col.name} style={{
+            <div key={col.name} className="empavai-col" style={{
               display: "flex", flexDirection: "column",
-              minWidth: 170, paddingLeft: 18, paddingRight: 18,
-              borderRight: ci < data.columns.length - 1 ? "1px solid rgba(124,92,191,0.09)" : "none",
+              paddingLeft: 18, paddingRight: 18,
               opacity: show && visible ? 1 : 0,
               transform: show && visible ? "translateY(0)" : "translateY(8px)",
               transition: `opacity 0.28s ease ${50 + ci * 55}ms, transform 0.28s cubic-bezier(0.4,0,0.2,1) ${50 + ci * 55}ms`,
@@ -350,7 +390,7 @@ const CollectionsPanel = ({ data, visible, anchorRef }: {
               }}>
                 <span style={{ display: "block", width: 3, height: 32, borderRadius: 2, background: col.color, flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: "#1e1030", whiteSpace: "nowrap" }}>{col.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: "#1e1030" }}>{col.name}</div>
                   <div style={{ fontSize: 11, fontWeight: 300, color: "#a090bb", marginTop: 3 }}>{col.subtitle}</div>
                 </div>
               </a>
@@ -540,24 +580,33 @@ export default function ElegantNavbar() {
   const lastY = useRef(0);
 
   useEffect(() => {
-    (async () => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    // one failing endpoint must not break the others
+    const load = async (path: string): Promise<any[]> => {
       try {
-        const [catRes, prodRes, stoneRes] = await Promise.all([
-          fetch(`${API_BASE}/api/categories`),
-          fetch(`${API_BASE}/api/products`),
-          fetch(`${API_BASE}/api/stones`),
-        ]);
-        const [catData, prodData, stoneData] = await Promise.all([
-          catRes.json(), prodRes.json(), stoneRes.json(),
-        ]);
-        const categories: Category[] = catData.success   && Array.isArray(catData.data)   ? catData.data   : [];
-        const products:   Product[]  = prodData.success  && Array.isArray(prodData.data)  ? prodData.data  : [];
-        const stones:     Stone[]    = stoneData.success && Array.isArray(stoneData.data) ? stoneData.data
-                                     : Array.isArray(stoneData)                           ? stoneData       : [];
-        setCollectionsData(buildDropData(categories, products));
-        setStoneLinks(buildStoneLinks(stones));
-      } catch (e) { console.error("Navbar fetch error", e); }
+        const res = await fetch(`${API_BASE}${path}`, { signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return toArray(await res.json());
+      } catch (e: any) {
+        if (e.name !== "AbortError") console.error(`Navbar fetch error (${path})`, e);
+        return [];
+      }
+    };
+
+    (async () => {
+      const [categories, products, stones] = await Promise.all([
+        load("/api/categories"),
+        load("/api/products"),
+        load("/api/stones"),
+      ]);
+      if (signal.aborted) return;
+      setCollectionsData(buildDropData(categories as Category[], products as Product[]));
+      setStoneLinks(buildStoneLinks(stones as Stone[]));
     })();
+
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -647,7 +696,8 @@ export default function ElegantNavbar() {
           overflow: visible;
         }
 
-        .empavai-col-scroll::-webkit-scrollbar { display: none; }
+        .empavai-col { border-right: 1px solid rgba(124,92,191,0.09); }
+        .empavai-col:last-child { border-right: none; }
 
         @media (max-width: 1100px) { .empavai-desknav { gap: 16px; } }
         @media (max-width: 900px) {

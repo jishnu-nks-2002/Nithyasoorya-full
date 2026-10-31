@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Jost, Cormorant_Garamond } from "next/font/google";
 
 const jost = Jost({ weight: ["300", "400", "500"], subsets: ["latin"], display: "swap" });
@@ -23,9 +24,8 @@ function cleanUrl(raw: string | undefined | null): string {
     .replace(/[\u00A0]/g, " ")
     .trim();
   if (!cleaned) return "";
-  if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) return cleaned;
-  if (cleaned.startsWith("/")) return `${API_BASE}${cleaned}`;
-  return cleaned;
+  if (/^(https?:|data:)/.test(cleaned)) return cleaned;
+  return `${API_BASE}/${cleaned.replace(/^\/+/, "")}`;
 }
 
 interface ProductImage {
@@ -39,7 +39,7 @@ interface Product {
   _id: string;
   name: string;
   slug: string;
-  category: string;
+  category: string | { _id: string; name: string; slug?: string };
   series?: string;
   priceDisplay?: string;
   price: number;
@@ -67,23 +67,27 @@ export default function CuratedSection() {
   const dragStartX  = useRef<number | null>(null);
   const dragDelta   = useRef(0);
   const isDragging  = useRef(false);
+  const wasDragged  = useRef(false); // true when the last pointer gesture was a drag, not a click
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
       try {
-        const res  = await fetch(`${API_BASE}/api/products`);
+        const res = await fetch(`${API_BASE}/api/products`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data.success) {
-          const list: Product[] = data.data ?? data.products ?? [];
-          setProducts(list);
-        }
-      } catch (err) {
-        console.error("CuratedSection fetch error:", err);
+        const list: Product[] = Array.isArray(data)
+          ? data
+          : data.data ?? data.products ?? [];
+        setProducts(list);
+      } catch (err: any) {
+        if (err.name !== "AbortError") console.error("CuratedSection fetch error:", err);
       } finally {
         setLoading(false);
       }
     })();
+    return () => controller.abort();
   }, []);
 
   // ── Image URL helper (sanitise + fallback) ────────────────────────────────
@@ -133,6 +137,7 @@ export default function CuratedSection() {
     isDragging.current = true;
     dragStartX.current = clientX;
     dragDelta.current  = 0;
+    wasDragged.current = false;
     setPaused(true);
   };
   const onDragMove = (clientX: number) => {
@@ -142,6 +147,7 @@ export default function CuratedSection() {
   const onDragEnd = () => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    wasDragged.current = Math.abs(dragDelta.current) > 5;
     if (dragDelta.current < -60)     { setIsTransitioning(true); setOffset(prev => Math.min(prev + 1, cloned.length - VISIBLE)); }
     else if (dragDelta.current > 60) { setIsTransitioning(true); setOffset(prev => Math.max(prev - 1, 0)); }
     dragDelta.current = 0;
@@ -305,12 +311,19 @@ export default function CuratedSection() {
                   const b    = badge(p);
                   const imgSrc = primaryImage(p);
                   return (
-                    <a
+                    <Link
                       key={`${p._id}-${i}`}
-                      href={`/products/${p.slug}`}
+                      href={`/product/${p.slug}`}
                       className="cs2-card"
                       style={{ width: cardWidth }}
                       draggable={false}
+                      onClick={(e) => {
+                        // a drag/swipe must not trigger navigation
+                        if (wasDragged.current) {
+                          e.preventDefault();
+                          wasDragged.current = false;
+                        }
+                      }}
                     >
                       <div className="cs2-card-img-wrap">
                         {b && <span className={`cs2-badge ${jost.className}`}>{b}</span>}
@@ -325,7 +338,9 @@ export default function CuratedSection() {
 
                       <div className="cs2-card-info">
                         {p.category && (
-                          <div className={`cs2-card-category ${jost.className}`}>{p.category}</div>
+                          <div className={`cs2-card-category ${jost.className}`}>
+                            {typeof p.category === "string" ? p.category : p.category.name}
+                          </div>
                         )}
                         <div className={`cs2-card-name ${cormorant.className}`}>{p.name}</div>
                         {p.material && (
@@ -335,7 +350,7 @@ export default function CuratedSection() {
                           {p.priceDisplay || `₹${p.price}`}
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>

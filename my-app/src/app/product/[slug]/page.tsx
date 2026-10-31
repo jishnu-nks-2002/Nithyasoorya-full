@@ -21,9 +21,29 @@ const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '919876543210
 
 const ACCENT = '#7c5cbf';
 
+// ── Sanitise image URLs (strips smart-quotes, prepends API_BASE for relative paths) ──
+function cleanUrl(raw: string | undefined | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const cleaned = raw
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u00A0]/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  if (/^(https?:|data:)/.test(cleaned)) return cleaned;
+  return `${API_BASE}/${cleaned.replace(/^\/+/, '')}`;
+}
+
+type CategoryField = string | { _id: string; name: string; slug?: string };
+
+// category can be a plain string or a populated object
+const getCategoryName = (c: CategoryField | undefined | null): string =>
+  !c ? '' : typeof c === 'string' ? c : c.name;
+
 interface ProductImage { url: string; alt: string; isPrimary: boolean; _id: string; }
 interface Product {
-  _id: string; name: string; slug: string; category: string;
+  _id: string; name: string; slug: string; category: CategoryField;
   series: string; priceDisplay: string; price: number;
   description: string; material: string; edition: string;
   dimensions: string; weight: string; beadSize: string; wristSize: string;
@@ -46,6 +66,8 @@ function EnquiryModal({ product, onClose }: { product: Product; onClose: () => v
   const [sending, setSending] = useState(false);
   const [sent,    setSent]    = useState(false);
   const [error,   setError]   = useState('');
+
+  const categoryName = getCategoryName(product.category);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -74,7 +96,7 @@ function EnquiryModal({ product, onClose }: { product: Product; onClose: () => v
           productId:       product._id,
           productName:     product.name,
           productSlug:     product.slug,
-          productCategory: product.category,
+          productCategory: categoryName,
           productPrice:    product.priceDisplay || `₹${product.price}`,
           ...form,
         }),
@@ -137,7 +159,7 @@ function EnquiryModal({ product, onClose }: { product: Product; onClose: () => v
         ) : (
           <>
             <p className={jost.className} style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: ACCENT, marginBottom: 6 }}>
-              {product.category}
+              {categoryName}
             </p>
             <h2 className={cormorant.className} style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 400, color: '#1a1030', marginBottom: 4 }}>
               Enquire About This Piece
@@ -205,21 +227,28 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!slug) return;
+    const controller = new AbortController();
     (async () => {
       try {
-        const res  = await fetch(`${API_BASE}/api/products/slug/${slug}`);
+        const res  = await fetch(`${API_BASE}/api/products/slug/${slug}`, { signal: controller.signal });
         const data = await res.json();
-        if (data.success) setProduct(data.data);
+        const p    = data.data ?? data.product ?? data;
+        if (res.ok && p?._id) setProduct(p);
         else setNotFound(true);
-      } catch { setNotFound(true); }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') setNotFound(true);
+      }
       finally { setLoading(false); }
     })();
+    return () => controller.abort();
   }, [slug]);
+
+  const categoryName = getCategoryName(product?.category);
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
     { label: 'Collections', href: '/collections' },
-    ...(product ? [{ label: product.category, href: `/collections/${encodeURIComponent(product.category)}` }] : []),
+    ...(product ? [{ label: categoryName, href: `/collections/${encodeURIComponent(categoryName)}` }] : []),
   ];
 
   const buildWhatsAppUrl = (p: Product) => {
@@ -258,15 +287,15 @@ export default function ProductPage() {
 
           {!loading && product && (() => {
             const images  = product.images || [];
-            const mainImg = images[activeImg]?.url || '/images/placeholder.jpeg';
+            const mainImg = cleanUrl(images[activeImg]?.url) || '/images/placeholder.jpeg';
             return (
               <>
-                <a href={`/collections/${encodeURIComponent(product.category)}`} className={jost.className}
+                <a href={`/collections/${encodeURIComponent(categoryName)}`} className={jost.className}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 32, fontSize: 9, letterSpacing: '0.24em', textTransform: 'uppercase', color: ACCENT, textDecoration: 'none', opacity: 0.75 }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                   </svg>
-                  {product.category}
+                  {categoryName}
                 </a>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'start' }}>
@@ -284,7 +313,7 @@ export default function ProductPage() {
                             border: `2px solid ${activeImg === i ? ACCENT : 'transparent'}`,
                             opacity: activeImg === i ? 1 : 0.6, transition: 'all 0.2s',
                           }}>
-                            <img src={img.url} alt={img.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={cleanUrl(img.url)} alt={img.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                         ))}
                       </div>
@@ -406,7 +435,7 @@ export default function ProductPage() {
           })()}
         </div>
       </div>
-      <RelatedProducts/>
+      <RelatedProducts currentSlug={product?.slug} currentCategory={categoryName} />
       <MasonryGallery />
 
       <ReviewSection />

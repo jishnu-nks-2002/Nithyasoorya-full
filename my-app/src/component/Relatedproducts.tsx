@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Cormorant_Garamond, Jost } from 'next/font/google';
 
 const cormorant = Cormorant_Garamond({
@@ -19,6 +20,26 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const ACCENT   = '#7c5cbf';
 const GAP      = 20;
 
+// ── Sanitise image URLs (strips smart-quotes, prepends API_BASE for relative paths) ──
+function cleanUrl(raw: string | undefined | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const cleaned = raw
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u00A0]/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  if (/^(https?:|data:)/.test(cleaned)) return cleaned;
+  return `${API_BASE}/${cleaned.replace(/^\/+/, '')}`;
+}
+
+type CategoryField = string | { _id: string; name: string; slug?: string };
+
+// category can be a plain string or a populated object
+const getCategoryName = (c: CategoryField | undefined | null): string =>
+  !c ? '' : typeof c === 'string' ? c : c.name;
+
 interface ProductImage {
   url: string;
   alt: string;
@@ -30,7 +51,7 @@ interface Product {
   _id: string;
   name: string;
   slug: string;
-  category: string;
+  category: CategoryField;
   series?: string;
   priceDisplay?: string;
   price: number;
@@ -66,31 +87,35 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
   const dragStartX = useRef<number | null>(null);
   const dragDelta  = useRef(0);
   const dragging   = useRef(false);
+  const wasDragged = useRef(false); // true when the last pointer gesture was a drag, not a click
 
   // ── Fetch products ────────────────────────────────────────────────────────
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
       try {
-        const res  = await fetch(`${API_BASE}/api/products`);
+        const res = await fetch(`${API_BASE}/api/products`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data.success) {
-          let list: Product[] = data.data ?? data.products ?? [];
-          // exclude current product
-          if (currentSlug) list = list.filter(p => p.slug !== currentSlug);
-          // prioritise same-category products
-          if (currentCategory) {
-            const same  = list.filter(p => p.category === currentCategory);
-            const other = list.filter(p => p.category !== currentCategory);
-            list = [...same, ...other];
-          }
-          setProducts(list);
+        let list: Product[] = Array.isArray(data)
+          ? data
+          : data.data ?? data.products ?? [];
+        // exclude current product
+        if (currentSlug) list = list.filter(p => p.slug !== currentSlug);
+        // prioritise same-category products
+        if (currentCategory) {
+          const same  = list.filter(p => getCategoryName(p.category) === currentCategory);
+          const other = list.filter(p => getCategoryName(p.category) !== currentCategory);
+          list = [...same, ...other];
         }
-      } catch (err) {
-        console.error('RelatedProducts fetch error:', err);
+        setProducts(list);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') console.error('RelatedProducts fetch error:', err);
       } finally {
         setLoading(false);
       }
     })();
+    return () => controller.abort();
   }, [currentSlug, currentCategory]);
 
   // ── Responsive visible count ──────────────────────────────────────────────
@@ -106,6 +131,11 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────
   const maxOffset = Math.max(0, products.length - visible);
+
+  // keep offset in range when the list or visible count changes
+  useEffect(() => {
+    setOffset(prev => Math.min(prev, maxOffset));
+  }, [maxOffset]);
 
   const startTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -125,9 +155,10 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
 
   // ── Drag / swipe ──────────────────────────────────────────────────────────
   const onDragStart = (clientX: number) => {
-    dragging.current  = true;
+    dragging.current   = true;
     dragStartX.current = clientX;
     dragDelta.current  = 0;
+    wasDragged.current = false;
     setPaused(true);
   };
   const onDragMove = (clientX: number) => {
@@ -137,6 +168,7 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
   const onDragEnd = () => {
     if (!dragging.current) return;
     dragging.current = false;
+    wasDragged.current = Math.abs(dragDelta.current) > 5;
     setAnimate(true);
     if (dragDelta.current < -60)       setOffset(prev => Math.min(prev + 1, maxOffset));
     else if (dragDelta.current > 60)   setOffset(prev => Math.max(prev - 1, 0));
@@ -146,7 +178,7 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const primaryImage = (p: Product) =>
-    (p.images.find(i => i.isPrimary) ?? p.images[0])?.url || '/images/placeholder.jpeg';
+    cleanUrl((p.images?.find(i => i.isPrimary) ?? p.images?.[0])?.url) || '/images/placeholder.jpeg';
 
   const availColor = (status?: string) => {
     if (status === 'Available')   return { bg: '#e8f5e9', text: '#2e7d32' };
@@ -528,15 +560,23 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
                 >
                   {products.map(p => {
                     const avail = availColor(p.availability);
+                    const catName = getCategoryName(p.category);
                     return (
-                      <a
+                      <Link
                         key={p._id}
-                        href={`/products/${p.slug}`}
+                        href={`/product/${p.slug}`}
                         className="rp-card"
                         style={{ width: cardWidth }}
                         onMouseEnter={() => setHoveredId(p._id)}
                         onMouseLeave={() => setHoveredId(null)}
                         draggable={false}
+                        onClick={(e) => {
+                          // a drag/swipe must not trigger navigation
+                          if (wasDragged.current) {
+                            e.preventDefault();
+                            wasDragged.current = false;
+                          }
+                        }}
                       >
                         <div className="rp-card-img-wrap">
                           {p.isNew && (
@@ -553,8 +593,8 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
                         </div>
 
                         <div className="rp-card-info">
-                          {p.category && (
-                            <p className={`rp-card-category ${jost.className}`}>{p.category}</p>
+                          {catName && (
+                            <p className={`rp-card-category ${jost.className}`}>{catName}</p>
                           )}
                           <p className={`rp-card-name ${cormorant.className}`}>{p.name}</p>
                           <p className={`rp-card-price ${jost.className}`}>
@@ -569,7 +609,7 @@ export default function RelatedProducts({ currentSlug, currentCategory }: Relate
                             )}
                           </p>
                         </div>
-                      </a>
+                      </Link>
                     );
                   })}
                 </div>

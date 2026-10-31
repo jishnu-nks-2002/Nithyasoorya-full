@@ -1,7 +1,9 @@
 'use client';
 
 import { useRef } from "react";
+import type { AboutPageData } from "../../api/useAboutPage";
 import Image from "next/image";
+import Link from "next/link";
 import { Bebas_Neue, Lato, Cormorant_Garamond } from "next/font/google";
 
 const bebasNeue = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
@@ -10,8 +12,8 @@ const cormorant = Cormorant_Garamond({
   weight: ["300","400","600"], style: ["normal","italic"], subsets: ["latin"], display: "swap",
 });
 
-export default function ArtistSection({ data }) {
-  const rootRef = useRef(null);
+export default function ArtistSection({ data }: { data?: AboutPageData["artist"] | null }) {
+  const rootRef = useRef<HTMLElement>(null);
     if (!data) return null;
 
   return (
@@ -69,7 +71,7 @@ export default function ArtistSection({ data }) {
         .as-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
         .as-btn-fill { display: inline-flex; align-items: center; gap: 10px; padding: 14px 30px; font-size: 9px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: var(--purple-light); border: 1px solid rgba(192,132,252,0.3); border-radius: 2px; cursor: pointer; text-decoration: none; background: linear-gradient(to right, var(--purple) 50%, transparent 50%); background-size: 200% 100%; background-position: right center; transition: background-position 0.45s cubic-bezier(0.4,0,0.2,1), color 0.4s ease, border-color 0.4s ease; }
         .as-btn-fill:hover { background-position: left center; color: #fff; border-color: var(--purple); }
-        .as-btn-ghost { display: inline-flex; align-items: center; gap: 10px; padding: 14px 20px; font-size: 9px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(190,165,230,0.45); background: none; border: none; border-bottom: 1px solid rgba(190,165,230,0.18); cursor: pointer; transition: color 0.3s ease, border-color 0.3s ease; }
+        .as-btn-ghost { display: inline-flex; align-items: center; gap: 10px; padding: 14px 20px; font-size: 9px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(190,165,230,0.45); background: none; border: none; border-bottom: 1px solid rgba(190,165,230,0.18); cursor: pointer; text-decoration: none; transition: color 0.3s ease, border-color 0.3s ease; }
         .as-btn-ghost:hover { color: var(--purple-light); border-color: var(--purple-light); }
         .as-strip { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
         .as-strip-text { font-size: 12px; font-style: italic; color: rgba(180,150,230,0.3); letter-spacing: 0.04em; }
@@ -174,18 +176,18 @@ export default function ArtistSection({ data }) {
               </div>
 
               <div className="as-actions">
-                <a href="#contact" className={`as-btn-fill ${lato.className}`}>
+                <Link href="/contact" className={`as-btn-fill ${lato.className}`}>
                   Commission a Work
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                   </svg>
-                </a>
-                <button className={`as-btn-ghost ${lato.className}`}>
+                </Link>
+                <Link href="/collections" className={`as-btn-ghost ${lato.className}`}>
                   View Full Portfolio
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                   </svg>
-                </button>
+                </Link>
               </div>
             </div>
           </div>

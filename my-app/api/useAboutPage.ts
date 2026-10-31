@@ -4,9 +4,43 @@ import { useEffect, useState, useCallback } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const DEFAULTS = {
+// ─── Types (shared with ArtistryHero / ArtistSection) ────────────────────────
+export interface AboutPageData {
   hero: {
-    videoSrc: "/your-video.mp4",
+    videoSrc: string;
+    carouselWords: { word: string; sub: string }[];
+    marqueeItems: string[];
+  };
+  about: {
+    eyebrow: string;
+    headline: string;
+    headlineEm: string;
+    bodyLeft: string;
+    bodyRight: string;
+    imageTop: string;
+    imageBottom: string;
+  };
+  artist: {
+    name: string;
+    title: string;
+    specialty: string;
+    bio: string;
+    worksCount: number | string;
+    yearsActive: number | string;
+    collectors: number | string;
+    quote: string;
+    tag: string;
+    portraitImg: string;
+    featured1: string;
+    featured2: string;
+    featured3: string;
+    studioInfo: string;
+  };
+}
+
+const DEFAULTS: AboutPageData = {
+  hero: {
+    videoSrc: "/images/videos/video-1.mp4",
     carouselWords: [
       { word: "ARTISTRY",      sub: "THE INTERSECTION OF FLUID RESIN AND ANCIENT TERRESTRIAL STRUCTURE" },
       { word: "ALCHEMY",       sub: "WHERE RAW STONE TRANSFORMS INTO LIQUID LIGHT AND LIVING FORM" },
