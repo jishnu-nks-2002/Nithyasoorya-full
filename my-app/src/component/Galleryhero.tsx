@@ -1,6 +1,5 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useGalleryHero } from '../../api/useGalleryHero';
 import "./Galleryhero.css"
 
@@ -9,81 +8,39 @@ interface SlideItem {
   src: string;
   alt?: string;
   poster?: string;
-  title?: string;
-  description?: string;
 }
 
 const DEFAULT_SLIDES: SlideItem[] = [
-  {
-    type: 'image',
-    src: '/images/p-2.jpeg',
-    alt: 'Buddha Statue',
-    title: 'EMPAVA',
-    description: 'The intersection of ancient traditions and avant-garde sculpture forms',
-  },
-  {
-    type: 'image',
-    src: '/images/p-4.jpeg',
-    alt: 'Zen Garden',
-    title: 'SERENITY',
-    description: 'A journey through peaceful landscapes and mindful spaces',
-  },
-  {
-    type: 'video',
-    src: '/images/videos/video-2.mp4',
-    poster: '/images/p-6.jpeg',
-    alt: 'Temple Architecture',
-    title: 'HARMONY',
-    description: 'Where classical design meets contemporary vision',
-  },
-  {
-    type: 'image',
-    src: '/images/p-3.jpeg',
-    alt: 'Modern Sculpture',
-    title: 'ESSENCE',
-    description: 'Capturing the spirit of timeless artistic expression',
-  },
+  { type: 'image', src: '/images/p-2.jpeg', alt: 'Buddha Statue' },
+  { type: 'image', src: '/images/p-4.jpeg', alt: 'Zen Garden' },
+  { type: 'video', src: '/images/videos/video-2.mp4', poster: '/images/p-6.jpeg', alt: 'Temple Architecture' },
+  { type: 'image', src: '/images/p-3.jpeg', alt: 'Modern Sculpture' },
 ];
 
 const GalleryHero: React.FC = () => {
-  const router = useRouter();
-
-  // ── Fetch from backend ──────────────────────────────────────
   const { data, loading, error } = useGalleryHero();
 
-  // Use API data if available, otherwise fall back to defaults
-  const slides: SlideItem[]  = data?.slides?.length  ? (data.slides as SlideItem[])  : DEFAULT_SLIDES;
-  const verticalText: string = data?.verticalText    ?? 'Museum Exhibition 2024';
-  const leftLabel: string    = data?.leftLabel       ?? 'FEATURED EXHIBITION';
-  const ctaText: string      = data?.ctaText         ?? 'EXPLORE THE COLLECTION';
-  const ctaLink: string      = data?.ctaLink         ?? '/collection';
-  const autoPlayInterval     = data?.autoPlayInterval ?? 5000;
+  const slides: SlideItem[] = data?.slides?.length ? (data.slides as SlideItem[]) : DEFAULT_SLIDES;
+  const autoPlayInterval = data?.autoPlayInterval ?? 5000;
 
-  // ── Slider state ────────────────────────────────────────────
-  const [currentSlide, setCurrentSlide]       = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [dotProgress, setDotProgress]         = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [dotProgress, setDotProgress] = useState(0);
 
-  const videoRefs        = useRef<(HTMLVideoElement | null)[]>([]);
-  const imageTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rafRef           = useRef<number | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const imageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef = useRef<number | null>(null);
   const progressStartRef = useRef<number>(0);
 
-  // Reset to slide 0 whenever the API data arrives with new slides
   useEffect(() => { setCurrentSlide(0); }, [data]);
 
   const clearTimers = useCallback(() => {
     if (imageTimerRef.current) { clearInterval(imageTimerRef.current); imageTimerRef.current = null; }
-    if (rafRef.current)        { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
 
+  // Crossfade happens in CSS, so we just change the index
   const advanceSlide = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentSlide(prev => (prev + 1) % slides.length);
-      setDotProgress(0);
-      setTimeout(() => setIsTransitioning(false), 50);
-    }, 500);
+    setCurrentSlide(prev => (prev + 1) % slides.length);
   }, [slides.length]);
 
   const startImageProgress = useCallback((duration: number) => {
@@ -117,9 +74,12 @@ const GalleryHero: React.FC = () => {
     setDotProgress(0);
     const slide = slides[currentSlide];
 
-    videoRefs.current.forEach((v, i) => {
-      if (v && i !== currentSlide) { v.pause(); v.currentTime = 0; }
-    });
+    // Pause other videos only after the fade-out finishes
+    const pauseTimeout = setTimeout(() => {
+      videoRefs.current.forEach((v, i) => {
+        if (v && i !== currentSlide) { v.pause(); v.currentTime = 0; }
+      });
+    }, 1300);
 
     if (slide.type === 'image') {
       startImageProgress(autoPlayInterval);
@@ -133,65 +93,28 @@ const GalleryHero: React.FC = () => {
       }
     }
 
-    return clearTimers;
+    return () => { clearTimers(); clearTimeout(pauseTimeout); };
   }, [currentSlide, slides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goToSlide = (index: number) => {
     if (index === currentSlide) return;
-    clearTimers();
-    const activeVideo = videoRefs.current[currentSlide];
-    if (activeVideo) activeVideo.pause();
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentSlide(index);
-      setDotProgress(0);
-      setTimeout(() => setIsTransitioning(false), 50);
-    }, 500);
+    setCurrentSlide(index);
   };
 
-  // ── CTA: navigate to the collection page ────────────────────
-  const handleCtaClick = () => {
-    let link = (ctaLink || '').trim();
-
-    // The backend may return "#collection" or "collection" – always send these
-    // to the collection page. Change '/collection' if your route is named differently.
-    if (!link || link === '#collection' || link === 'collection') {
-      link = '/collections';
-    }
-
-    if (link.startsWith('/')) {
-      // Internal page – client-side navigation, no reload
-      router.push(link);
-    } else if (link.startsWith('#')) {
-      // Same-page section
-      document.querySelector(link)?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      // External URL
-      window.location.href = link;
-    }
-  };
-
-  // ── Loading / error states ──────────────────────────────────
   if (loading) {
     return (
       <section className="gallery-hero">
-        <div className="gallery-hero-loading">Loading...</div>
+        <div className="gallery-hero-loading" />
       </section>
     );
   }
 
   if (error && !data) {
     console.warn('GalleryHero: using default slides due to API error:', error);
-    // Component continues to render with DEFAULT_SLIDES — no hard crash
   }
 
-  const currentSlideData = slides[currentSlide] ?? slides[0];
-
-  // ── Render ──────────────────────────────────────────────────
   return (
     <section className="gallery-hero">
-
-      {/* Full-bleed media layer */}
       <div className="gallery-media-layer">
         {slides.map((slide, index) => (
           <div
@@ -231,34 +154,6 @@ const GalleryHero: React.FC = () => {
         ))}
       </div>
 
-      {/* White gradient overlay */}
-      <div className="gallery-white-fade" />
-
-      {/* Left content */}
-      <div className="gallery-hero-left">
-        <div className="gallery-vertical-text">{verticalText}</div>
-
-        <div className={`gallery-left-content-wrapper ${isTransitioning ? 'transitioning' : ''}`}>
-          <div className="gallery-left-label">{leftLabel}</div>
-
-          <div className="gallery-hero-left-heading-wrapper">
-            <h1 className="gallery-hero-title">
-              {currentSlideData?.title || 'EMPAVA'}
-            </h1>
-          </div>
-
-          <p className="gallery-left-description" key={`desc-${currentSlide}`}>
-            {currentSlideData?.description ||
-              'The intersection of ancient traditions and avant-garde sculpture forms'}
-          </p>
-
-          <button className="gallery-left-button" onClick={handleCtaClick}>
-            {ctaText}
-          </button>
-        </div>
-      </div>
-
-      {/* Nav dots */}
       {slides.length > 1 && (
         <div className="gallery-slider-dots">
           {slides.map((_, index) => (
@@ -276,7 +171,6 @@ const GalleryHero: React.FC = () => {
           ))}
         </div>
       )}
-
     </section>
   );
 };
