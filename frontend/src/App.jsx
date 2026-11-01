@@ -10,17 +10,10 @@ import ProductForm from './pages/ProductForm';
 import Contacts from './pages/Contacts';
 import AboutCMS from './pages/AboutCMS';
 import Enquiries from './pages/Enquiries';
-<<<<<<< HEAD
 import StonesList from './pages/Stoneslist';                // ← stones list page
 import StoneForm from './pages/Stoneform';                  // ← stone create/edit form
 import CrystalPagesList from './pages/CrystalPagesList';    // ← Crystal Wisdom pages list
 import CrystalPageForm from './pages/CrystalPageForm';      // ← Crystal Wisdom page builder
-=======
-import StonesList from './pages/Stoneslist';       // ← NEW: stones list page
-import StoneForm from './pages/Stoneform';          // ← NEW: stone create/edit form
-import CrystalPagesList from './pages/CrystalPagesList';   // ← NEW: Crystal Wisdom pages list
-import CrystalPageForm from './pages/CrystalPageForm';     // ← NEW: Crystal Wisdom page builder
->>>>>>> 3e72557bb49550840218217c9f31d57fd34053dd
 import ReviewsCMS from './pages/ReviewsCMS';
 import GalleryCMS from './pages/GalleryCMS';
 
