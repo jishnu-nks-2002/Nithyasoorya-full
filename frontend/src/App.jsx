@@ -10,18 +10,12 @@ import ProductForm from './pages/ProductForm';
 import Contacts from './pages/Contacts';
 import AboutCMS from './pages/AboutCMS';
 import Enquiries from './pages/Enquiries';
-<<<<<<< HEAD
-import StonesList from './pages/StonesList';       // ← NEW: stones list page
-import StoneForm from './pages/StoneForm';          // ← NEW: stone create/edit form
-import CrystalPagesList from './pages/CrystalPagesList';   // ← NEW: Crystal Wisdom pages list
-import CrystalPageForm from './pages/CrystalPageForm';     // ← NEW: Crystal Wisdom page builder
-=======
-import StonesList from './pages/Stoneslist';       // ← NEW: stones list page
-import StoneForm from './pages/Stoneform';          // ← NEW: stone create/edit form
->>>>>>> 6cf123e49a51356c7a23b8374aa1bc70b030f4ec
+import StonesList from './pages/Stoneslist';                // ← stones list page
+import StoneForm from './pages/Stoneform';                  // ← stone create/edit form
+import CrystalPagesList from './pages/CrystalPagesList';    // ← Crystal Wisdom pages list
+import CrystalPageForm from './pages/CrystalPageForm';      // ← Crystal Wisdom page builder
 import ReviewsCMS from './pages/ReviewsCMS';
 import GalleryCMS from './pages/GalleryCMS';
-
 
 function ProtectedRoute({ children }) {
   const { admin } = useAuth();
@@ -58,14 +52,14 @@ export default function App() {
                 <Route path="/stones-admin/new"        element={<StoneForm />} />
                 <Route path="/stones-admin/:id/edit"   element={<StoneForm />} />
 
-
                 {/* ── Crystal Wisdom pages ── */}
-                <Route path="/crystal-pages"            element={<CrystalPagesList />} />
-                <Route path="/crystal-pages/new"        element={<CrystalPageForm />} />
-                <Route path="/crystal-pages/:id/edit"   element={<CrystalPageForm />} />
+                <Route path="/crystal-pages"           element={<CrystalPagesList />} />
+                <Route path="/crystal-pages/new"       element={<CrystalPageForm />} />
+                <Route path="/crystal-pages/:id/edit"  element={<CrystalPageForm />} />
 
-                  <Route path="/reviews"   element={<ReviewsCMS/>} />
-                   <Route path="/gallery"   element={<GalleryCMS/>} />
+                {/* ── Reviews & Gallery ── */}
+                <Route path="/reviews"                 element={<ReviewsCMS />} />
+                <Route path="/gallery"                 element={<GalleryCMS />} />
 
                 <Route path="*"                        element={<Navigate to="/" replace />} />
               </Routes>
