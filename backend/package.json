@@ -8,7 +8,9 @@
   "dev": "nodemon server.js",
   "seed": "node scripts/seed.js",
   "seed:content": "node scripts/seedContent.js",
-  "seed:all": "node scripts/seed.js && node scripts/seedContent.js"
+  "seed:crystal-pages": "node scripts/seedCrystalPages.js",
+  "seed:all": "node scripts/seed.js && node scripts/seedContent.js && node scripts/seedCrystalPages.js"
+  
 },
   "dependencies": {
     "bcryptjs": "^2.4.3",

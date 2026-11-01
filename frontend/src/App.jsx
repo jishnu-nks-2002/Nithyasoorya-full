@@ -12,6 +12,8 @@ import AboutCMS from './pages/AboutCMS';
 import Enquiries from './pages/Enquiries';
 import StonesList from './pages/StonesList';       // ← NEW: stones list page
 import StoneForm from './pages/StoneForm';          // ← NEW: stone create/edit form
+import CrystalPagesList from './pages/CrystalPagesList';   // ← NEW: Crystal Wisdom pages list
+import CrystalPageForm from './pages/CrystalPageForm';     // ← NEW: Crystal Wisdom page builder
 import ReviewsCMS from './pages/ReviewsCMS';
 import GalleryCMS from './pages/Gallerycms';
 
@@ -51,6 +53,11 @@ export default function App() {
                 <Route path="/stones-admin/new"        element={<StoneForm />} />
                 <Route path="/stones-admin/:id/edit"   element={<StoneForm />} />
 
+
+                {/* ── Crystal Wisdom pages ── */}
+                <Route path="/crystal-pages"            element={<CrystalPagesList />} />
+                <Route path="/crystal-pages/new"        element={<CrystalPageForm />} />
+                <Route path="/crystal-pages/:id/edit"   element={<CrystalPageForm />} />
 
                   <Route path="/reviews"   element={<ReviewsCMS/>} />
                    <Route path="/gallery"   element={<GalleryCMS/>} />

@@ -57,6 +57,10 @@ interface Stone {
   subtitle?: string; tagline?: string; isActive?: boolean;
 }
 interface StoneLink { label: string; sub: string; href: string; }
+interface CrystalPageLite {
+  _id: string; title: string; slug: string;
+  menuLabel?: string; menuSubtitle?: string; showInMenu?: boolean; isActive?: boolean;
+}
 interface CategoryColumn {
   name: string; slug: string; subtitle: string; color: string; image: string;
   products: { name: string; slug: string; isNew: boolean }[];
@@ -113,28 +117,17 @@ function buildDropData(categories: Category[], products: Product[]): DropData {
   };
 }
 
-// ── Build stone links ─────────────────────────────────────────────────────────
-function buildStoneLinks(stones: Stone[]): StoneLink[] {
-  const fallback: StoneLink[] = [
-    { label: "All Stones",       sub: "Browse the full collection",  href: "/stones"                  },
-    { label: "Black Tourmaline", sub: "Protection & Grounding",      href: "/stones/black-tourmaline" },
-    { label: "Amethyst",         sub: "Spirituality & Clarity",      href: "/stones/amethyst"         },
-    { label: "Rose Quartz",      sub: "Love & Emotional Healing",    href: "/stones/rose-quartz"      },
-    { label: "Selenite",         sub: "Cleansing & Light",           href: "/stones/selenite"         },
-    { label: "Citrine",          sub: "Abundance & Manifestation",   href: "/stones/citrine"          },
-  ];
-  if (!stones || stones.length === 0) return fallback;
-  return [
-    { label: "All Stones", sub: "Browse the full collection", href: "/stones" },
-    ...stones
-      .filter(s => s.isActive !== false)
-      .slice(0, 8)
-      .map(s => ({
-        label: s.name,
-        sub:   s.subtitle || s.tagline || `Explore ${s.name}`,
-        href:  `/stones/${s.slug}`,
-      })),
-  ];
+// ── Build Crystal Wisdom links ────────────────────────────────────────────────
+// 100% backend-driven: every page created in Admin → Crystal Wisdom with
+// "Show in menu" turned on (already sorted by the admin's display order).
+function buildStoneLinks(pages: CrystalPageLite[]): StoneLink[] {
+  return (pages ?? [])
+    .filter(p => p.isActive !== false && p.showInMenu !== false && p.slug !== "crystal-wisdom")
+    .map(p => ({
+      label: p.menuLabel || p.title,
+      sub:   p.menuSubtitle || `Explore ${p.menuLabel || p.title}`,
+      href:  `/crystal-wisdom/${p.slug}`,
+    }));
 }
 
 // ── Sacred Spaces links ───────────────────────────────────────────────────────
@@ -497,9 +490,12 @@ const StonesPanel = ({ visible, stoneLinks }: { visible: boolean; stoneLinks: St
           <span style={{ display: "block", width: 3, height: 10, borderRadius: 2, background: "#7B4BA0", flexShrink: 0 }} />
           <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#7B4BA0" }}>Crystal Wisdom</span>
         </div>
+        {stoneLinks.length === 0 && (
+          <div style={{ padding: "6px 10px", fontSize: 11.5, color: "#a090bb" }}>No pages yet.</div>
+        )}
         {stoneLinks.map(link => <StoneLinkRow key={link.href} link={link} />)}
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(123,75,160,0.1)", paddingLeft: 10 }}>
-          <a href="/stones" style={{
+          <a href="/crystal-wisdom" style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
             color: "#7B4BA0", textDecoration: "none",
@@ -507,7 +503,7 @@ const StonesPanel = ({ visible, stoneLinks }: { visible: boolean; stoneLinks: St
             onMouseEnter={e => (e.currentTarget.style.opacity = "0.7")}
             onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
           >
-            View Full Collection
+            Explore Crystal Wisdom
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -596,14 +592,14 @@ export default function ElegantNavbar() {
     };
 
     (async () => {
-      const [categories, products, stones] = await Promise.all([
+      const [categories, products, crystalPages] = await Promise.all([
         load("/api/categories"),
         load("/api/products"),
-        load("/api/stones"),
+        load("/api/crystal-pages?menu=true"),
       ]);
       if (signal.aborted) return;
       setCollectionsData(buildDropData(categories as Category[], products as Product[]));
-      setStoneLinks(buildStoneLinks(stones as Stone[]));
+      setStoneLinks(buildStoneLinks(crystalPages as CrystalPageLite[]));
     })();
 
     return () => controller.abort();
@@ -625,7 +621,7 @@ export default function ElegantNavbar() {
   const NAV_ITEMS: NavItemDef[] = [
     { label: "HOME",           href: "/",             hasDropdown: false },
     { label: "COLLECTIONS",    href: "/collections",  hasDropdown: true  },
-    { label: "CRYSTAL WISDOM", href: "/stones",       hasDropdown: true  },
+    { label: "CRYSTAL WISDOM", href: "/crystal-wisdom", hasDropdown: true  },
     { label: "ABOUT",          href: "/about-us",     hasDropdown: false },
     { label: "TESTIMONIALS",   href: "/testimonials", hasDropdown: false },
     { label: "CONTACT",        href: "/contact",      hasDropdown: false },
@@ -808,13 +804,13 @@ export default function ElegantNavbar() {
                 </button>
                 {expanded && (
                   <div className="en-mob-content">
-                    <a href="/stones" className="en-mob-viewall" onClick={() => setMobileOpen(false)}>
-                      View Full Collection
+                    <a href="/crystal-wisdom" className="en-mob-viewall" onClick={() => setMobileOpen(false)}>
+                      Explore Crystal Wisdom
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                       </svg>
                     </a>
-                    {stoneLinks.slice(1).map(link => (
+                    {stoneLinks.map(link => (
                       <a key={link.href} href={link.href} className="en-mob-prod-link" onClick={() => setMobileOpen(false)}>
                         <span>{link.label}</span>
                         <span style={{ fontSize: 10, color: "#a090bb" }}>{link.sub}</span>

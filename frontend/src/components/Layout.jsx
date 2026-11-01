@@ -46,16 +46,16 @@ const navItems = [
     ),
   },
 
-  // ── Stones (NEW) ──────────────────────────────────────────────────────────
+ 
+
+  // ── Crystal Wisdom pages (NEW) ─────────────────────────────────────────────
   {
-    to: '/stones-admin',
-    label: 'Crystals',
-    stonesBadge: true,
+    to: '/crystal-pages',
+    label: 'Crystal Wisdom',
     icon: (
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-        {/* Diamond / gem shape */}
-        <polygon points="8,1 15,6 8,15 1,6" />
-        <polyline points="1,6 8,9 15,6" />
+        <rect x="2" y="1.5" width="12" height="13" rx="1.5" />
+        <path d="M5 5h6M5 8h6M5 11h3.5" strokeLinecap="round" />
       </svg>
     ),
   },

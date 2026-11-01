@@ -20,6 +20,9 @@ const galleryRoutes = require('./routes/gallery_route');
 // ── Stones route (NEW) ────────────────────────────────────────────────────────
 const stoneRoutes = require('./routes/stones');
 
+// ── Crystal Wisdom pages (NEW) ────────────────────────────────────────────────
+const crystalPageRoutes = require('./routes/crystalPages');
+
 const app = express();
 
 connectDB();
@@ -46,6 +49,7 @@ app.use('/api/contact',      contactRoutes);
 app.use('/api/about',        aboutRoutes);
 app.use('/api/reviews',      reviewRoutes);
 app.use('/api/stones',       stoneRoutes);   // ✅ Stones CRUD
+app.use('/api/crystal-pages', crystalPageRoutes); // ✅ Crystal Wisdom page builder
 
 app.use('/api/gallery', galleryRoutes);
 // ── Health check ──────────────────────────────────────────────────────────────
