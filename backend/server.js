@@ -29,6 +29,9 @@ connectDB();
 
 app.use(cors({
   origin: [
+    'https://72.60.102.101.nip.io',
+    'https://www.72.60.102.101.nip.io',
+    'https://admin.72.60.102.101.nip.io',
     'http://localhost:5173',
     'http://localhost:3000',
   ],

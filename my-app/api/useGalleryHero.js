@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 // Hardcode temporarily to confirm it works, then move back to env var
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '') + '/api';
 
 export function useGalleryHero() {
   const [data, setData]       = useState(null);
