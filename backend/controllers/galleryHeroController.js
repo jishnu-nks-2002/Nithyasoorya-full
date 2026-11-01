@@ -1,4 +1,4 @@
-const GalleryHero = require('../models/GalleryHero');
+const GalleryHero = require('../models/Galleryhero');
 const cloudinary = require('../config/cloudinary');
 const { uploadToCloudinary } = require('../middleware/upload');
 

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
-const GalleryHero = require('../models/GalleryHero');
+const GalleryHero = require('../models/Galleryhero');
 
 const seed = async () => {
   try {

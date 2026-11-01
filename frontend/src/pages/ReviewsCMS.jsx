@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styles from './ReviewsCMS.module.css';
 
 // ── API base — matches Express mount: app.use('/api/reviews', reviewRoutes) ───
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const API      = `${BASE_URL}/api/reviews`;
 
 const getToken    = () => localStorage.getItem('gh_token') || '';

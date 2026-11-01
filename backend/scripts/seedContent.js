@@ -26,7 +26,7 @@ const SiteContent  = require('../models/SiteContent');
 // The file is named "Galleryhero.js" in the repo but required as "GalleryHero"
 // elsewhere — works on Windows/macOS, fails on Linux. Support both.
 let GalleryHero;
-try { GalleryHero = require('../models/GalleryHero'); }
+try { GalleryHero = require('../models/Galleryhero'); }
 catch { GalleryHero = require('../models/Galleryhero'); }
 
 const DRY_RUN = process.argv.includes('--dry-run');
