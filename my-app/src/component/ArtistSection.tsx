@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { AboutPageData } from "../../api/useAboutPage";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,7 +14,25 @@ const cormorant = Cormorant_Garamond({
 
 export default function ArtistSection({ data }: { data?: AboutPageData["artist"] | null }) {
   const rootRef = useRef<HTMLElement>(null);
-    if (!data) return null;
+  const [images, setImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (data) setImages([data.portraitImg, data.featured1, data.featured2, data.featured3]);
+  }, [data]);
+
+  if (!data) return null;
+
+  const mainImg = images[0] || data.portraitImg;
+  const thumbs = images.length ? images.slice(1) : [data.featured1, data.featured2, data.featured3];
+  const isPortrait = mainImg === data.portraitImg;
+
+  const swapImage = (thumbIndex: number) => {
+    setImages(prev => {
+      const next = [...prev];
+      [next[0], next[thumbIndex + 1]] = [next[thumbIndex + 1], next[0]];
+      return next;
+    });
+  };
 
   return (
     <>
@@ -42,10 +60,11 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
         .as-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(0.72) brightness(0.82); transition: filter 0.6s ease, transform 0.6s ease; }
         .as-portrait:hover img { filter: saturate(0.88) brightness(0.9); transform: scale(1.02); }
         .as-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 55%, rgba(10,3,22,0.75) 100%); }
+        .as-main-img { animation: as-fade 0.7s ease; }
+        @keyframes as-fade { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
         .as-portrait-name { position: absolute; bottom: 18px; left: 18px; z-index: 2; }
         .as-portrait-name strong { display: block; font-size: 20px; font-weight: 400; color: var(--cream); letter-spacing: 0.05em; }
         .as-portrait-name span { font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(192,132,252,0.6); font-weight: 300; }
-        .as-tag-pill { position: absolute; top: 16px; left: 16px; z-index: 2; padding: 5px 12px; background: rgba(107,63,160,0.55); border: 1px solid rgba(192,132,252,0.25); border-radius: 2px; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--purple-light); backdrop-filter: blur(6px); }
         .as-works-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
         .as-work-thumb { position: relative; overflow: hidden; border-radius: 3px; aspect-ratio: 1/1; border: 1px solid var(--border); cursor: pointer; }
         .as-work-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(0.6) brightness(0.7); transition: filter 0.4s ease, transform 0.4s ease; }
@@ -111,26 +130,35 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
           <div className="as-grid">
             <div className="as-left">
               <div className="as-portrait">
-                <span className="as-tag-pill">{data.tag}</span>
                 <Image
-                  key={data.portraitImg}
-                  src={data.portraitImg}
+                  key={mainImg}
+                  className="as-main-img"
+                  src={mainImg}
                   alt={data.name}
                   fill
                   sizes="320px"
                   style={{ objectFit: "cover", filter: "saturate(0.72) brightness(0.82)" }}
                   unoptimized
                 />
-                <div className="as-portrait-name">
-                  <strong className={cormorant.className}>{data.name}</strong>
-                  <span>{data.title}</span>
-                </div>
+                {isPortrait && (
+                  <div className="as-portrait-name">
+                    <strong className={cormorant.className}>{data.name}</strong>
+                    <span>{data.title}</span>
+                  </div>
+                )}
               </div>
 
               <p className="as-work-label">Selected Works</p>
               <div className="as-works-row">
-                {[data.featured1, data.featured2, data.featured3].map((src, i) => (
-                  <div key={src || i} className="as-work-thumb">
+                {thumbs.map((src, i) => (
+                  <div
+                    key={src || i}
+                    className="as-work-thumb"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => swapImage(i)}
+                    onKeyDown={e => (e.key === "Enter" || e.key === " ") && swapImage(i)}
+                  >
                     <Image
                       src={src}
                       alt={`Work ${i + 1}`}
