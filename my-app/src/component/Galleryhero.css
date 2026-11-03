@@ -9,6 +9,8 @@
   position: relative;
   width: 100%;
   height: 100vh;
+  height: 100svh;            /* phones: ignore the collapsing browser bar */
+  height: 100dvh;            /* phones: follow the browser bar so no gap is left */
   min-height: 560px;
   overflow: hidden;
   /* Fallback bg while media loads */
@@ -36,6 +38,7 @@
   z-index: 0;
   transition: opacity 1.4s ease-in-out;
   will-change: opacity;
+  overflow: hidden;
 }
 .gallery-slide.active {
   opacity: 1;
@@ -64,7 +67,7 @@
 /* ─── Nav dots ───────────────────────────────────────────────────────────── */
 .gallery-slider-dots {
   position: absolute;
-  right: 28px;
+  right: max(28px, env(safe-area-inset-right));
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -83,6 +86,7 @@
   cursor: pointer;
   padding: 0;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
   transition: height 0.3s ease, border-radius 0.3s ease, background 0.3s ease, transform 0.2s ease;
 }
 .gallery-dot:hover {
@@ -106,18 +110,71 @@
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
-@media (max-width: 968px) {
-  .gallery-slider-dots { right: 18px; gap: 14px; }
+
+/* Large screens: keep the hero from becoming absurdly tall on ultra-wide monitors */
+@media (min-width: 1920px) {
+  .gallery-hero { max-height: 1200px; }
 }
 
+/* Tablets / small laptops */
+@media (max-width: 968px) {
+  .gallery-slider-dots { right: max(18px, env(safe-area-inset-right)); gap: 14px; }
+}
+
+/* Phones */
 @media (max-width: 576px) {
-  .gallery-slider-dots { right: 14px; gap: 12px; }
+  .gallery-hero { min-height: 480px; }
+  .gallery-slider-dots { right: max(14px, env(safe-area-inset-right)); gap: 12px; }
   .gallery-dot { width: 8px; height: 8px; }
   .gallery-dot.active { height: 24px; }
 }
 
+/* Touch screens: slightly larger, easier-to-tap dots */
+@media (pointer: coarse) {
+  .gallery-dot { width: 12px; height: 12px; }
+  .gallery-dot.active { height: 32px; }
+  .gallery-dot:hover { transform: none; }
+  .gallery-slider-dots { gap: 16px; }
+}
+
+/* Phones held sideways (very short screens) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .gallery-hero { min-height: 0; height: 100vh; height: 100svh; height: 100dvh; }
+  .gallery-slider-dots { right: max(12px, env(safe-area-inset-right)); gap: 10px; }
+}
+
+/* Any screen taller than it is wide (phones, narrow windows):
+   instead of filling the whole screen height (which crops wide pictures),
+   the hero becomes as tall as the current picture needs to be at full width,
+   plus a little breathing room.
+   --hero-ratio (width / height) is set from the TSX for the active slide.
+   Tweak the two values below to taste:
+     --hero-pad-top : empty space between the navbar and the picture
+     --hero-extra   : extra picture height (small values crop the sides a little) */
+@media (max-aspect-ratio: 1/1) {
+  .gallery-hero {
+    --hero-pad-top: 80px;
+    --hero-extra: 24px;
+    --hero-h: calc(100vw / var(--hero-ratio, 1.5) + var(--hero-extra) + var(--hero-pad-top));
+
+    min-height: 0;
+    height: min(var(--hero-h), 100svh);
+    height: min(var(--hero-h), 100dvh);
+    transition: height 0.6s ease;
+  }
+  /* media sits below the top padding; the padding shows the hero's background */
+  .gallery-media-layer { top: var(--hero-pad-top); }
+
+  .gallery-hero-image,
+  .gallery-hero-video {
+    object-fit: cover;
+  }
+}
+
 /* ─── Respect reduced-motion preference ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  .gallery-hero { transition: none; }
   .gallery-hero-image,
-  .gallery-hero-video { transform: none; transition: none; }
+  .gallery-hero-video { transform: none !important; transition: none; }
+  .gallery-slide { transition-duration: 0.01s; }
 }

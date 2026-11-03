@@ -25,6 +25,10 @@ const GalleryHero: React.FC = () => {
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dotProgress, setDotProgress] = useState(0);
+  // Width / height of each media file, keyed by src.
+  // On tall screens (phones) the hero height follows the current slide's
+  // aspect ratio, so the whole picture is visible with no crop and no bars.
+  const [ratios, setRatios] = useState<Record<string, number>>({});
 
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const imageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -101,6 +105,16 @@ const GalleryHero: React.FC = () => {
     setCurrentSlide(index);
   };
 
+  // Record aspect ratio. Called from onLoad / onLoadedMetadata AND from the
+  // refs (for media already loaded from cache before React attached handlers).
+  const recordRatio = (src: string, w: number, h: number) => {
+    if (!w || !h) return;
+    const r = Math.round((w / h) * 1000) / 1000;
+    setRatios(prev => (prev[src] === r ? prev : { ...prev, [src]: r }));
+  };
+
+  const currentRatio = slides[currentSlide] ? ratios[slides[currentSlide].src] : undefined;
+
   if (loading) {
     return (
       <section className="gallery-hero">
@@ -114,27 +128,40 @@ const GalleryHero: React.FC = () => {
   }
 
   return (
-    <section className="gallery-hero">
+    <section
+      className="gallery-hero"
+      style={currentRatio ? ({ '--hero-ratio': currentRatio } as React.CSSProperties) : undefined}
+    >
       <div className="gallery-media-layer">
         {slides.map((slide, index) => (
           <div
             key={index}
-            className={`gallery-slide ${index === currentSlide ? 'active' : ''}`}
+            className={`gallery-slide${index === currentSlide ? ' active' : ''}`}
           >
             {slide.type === 'image' ? (
-              <img
-                src={slide.src}
-                alt={slide.alt || `Slide ${index + 1}`}
-                className="gallery-hero-image"
-              />
+              <>
+                <img
+                  ref={el => { if (el && el.complete) recordRatio(slide.src, el.naturalWidth, el.naturalHeight); }}
+                  src={slide.src}
+                  alt={slide.alt || `Slide ${index + 1}`}
+                  className="gallery-hero-image"
+                  onLoad={e => recordRatio(slide.src, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+                  decoding="async"
+                />
+              </>
             ) : (
               <video
-                ref={el => { videoRefs.current[index] = el; }}
+                ref={el => {
+                  videoRefs.current[index] = el;
+                  if (el && el.readyState >= 1) recordRatio(slide.src, el.videoWidth, el.videoHeight);
+                }}
+                onLoadedMetadata={e => recordRatio(slide.src, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
                 src={slide.src}
                 poster={slide.poster}
                 className="gallery-hero-video"
                 muted
                 playsInline
+                preload={index === 0 ? 'auto' : 'metadata'}
                 autoPlay={index === currentSlide}
                 onPlay={e => {
                   if (index === currentSlide) {

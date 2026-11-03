@@ -99,7 +99,8 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
         @media (max-width: 900px) {
           .as-inner { padding: 56px 28px; }
           .as-grid { grid-template-columns: 1fr; gap: 40px; }
-          .as-portrait { aspect-ratio: 4/3; }
+          /* keep the portrait (3/4) shape on mobile; capped width so it stays a sensible size on tablets */
+          .as-left { width: 100%; max-width: 420px; margin: 0 auto; }
           .as-header { flex-direction: column; align-items: flex-start; }
           .as-header-sub { text-align: left; max-width: 100%; }
         }
@@ -136,7 +137,7 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
                   src={mainImg}
                   alt={data.name}
                   fill
-                  sizes="320px"
+                  sizes="(max-width: 900px) 420px, 320px"
                   style={{ objectFit: "cover", filter: "saturate(0.72) brightness(0.82)" }}
                   unoptimized
                 />

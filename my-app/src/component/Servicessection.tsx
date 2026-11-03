@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import type { JSX } from "react"
 import Link from "next/link"
+import "./Servicessection.css"
 
 /* ───────────────── TYPES ───────────────── */
 interface Service {
@@ -26,10 +27,53 @@ const BGS = ["#ffffff", "#f3eef8"]
 const PAGE_LIMIT = 100 // items requested per page
 const MAX_PAGES = 50 // safety cap
 
-const CARD_HEIGHT = 550
-const STACK_OFFSET = 28
 const MAX_STACK_PEEK = 3 // how many cards peek out behind the top one (keeps the stack small with many categories)
-const CARD_SCROLL_PX = 520
+
+/* ───────────────── RESPONSIVE LAYOUT ─────────────────
+   wide   (≥1200px)  : title on the left, stacked scroll cards on the right (original design)
+   medium (900–1199) : title on top, stacked scroll cards below (card height adapts to the screen)
+   list   (<900px, or very short screens such as a phone turned sideways)
+          : normal vertical list of cards — no scroll-jacking, easy on touch devices */
+type Mode = "wide" | "medium" | "list"
+
+interface StackCfg {
+  cardH: number
+  offset: number
+  entry: number
+  scrollPx: number
+  media: number
+}
+
+const WIDE_CFG: StackCfg = { cardH: 550, offset: 28, entry: 520, scrollPx: 520, media: 340 }
+const mediumCfg = (vh: number): StackCfg => ({
+  cardH: Math.max(340, Math.min(440, vh - 260)),
+  offset: 20,
+  entry: 420,
+  scrollPx: 440,
+  media: 280,
+})
+
+function useLayout(): { mode: Mode | null; vh: number } {
+  const [state, setState] = useState<{ mode: Mode | null; vh: number }>({ mode: null, vh: 800 })
+
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const mode: Mode = w < 900 || h < 520 ? "list" : w < 1200 ? "medium" : "wide"
+      setState((p) => (p.mode === mode && Math.abs(p.vh - h) < 40 ? p : { mode, vh: h }))
+    }
+    calc()
+    window.addEventListener("resize", calc)
+    window.addEventListener("orientationchange", calc)
+    return () => {
+      window.removeEventListener("resize", calc)
+      window.removeEventListener("orientationchange", calc)
+    }
+  }, [])
+
+  return state
+}
 
 /* ───────────────── API HELPERS ───────────────── */
 // Handles [..] or { data: [..] } or { data: { categories: [..] } } or { categories: [..] } / { products: [..] }
@@ -133,7 +177,7 @@ async function fetchServices(): Promise<Service[]> {
 }
 
 /* ───────────────── PREMIUM FILL BUTTON ───────────────── */
-function FillButton({ accent, href }: { accent: string; href: string }): JSX.Element {
+function FillButton({ accent, href, block = false }: { accent: string; href: string; block?: boolean }): JSX.Element {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -158,8 +202,9 @@ function FillButton({ accent, href }: { accent: string; href: string }): JSX.Ele
         fontFamily: "'Lato', sans-serif",
         color: hovered ? "#fff" : accent,
         transition: "color 0.35s ease",
-        width: "fit-content",
+        width: block ? "100%" : "fit-content",
         textDecoration: "none",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <span
@@ -180,11 +225,12 @@ function FillButton({ accent, href }: { accent: string; href: string }): JSX.Ele
 }
 
 /* ───────────────── SMOOTH SCROLL HOOK ───────────────── */
-function useSmoothScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
+function useSmoothScrollProgress(ref: React.RefObject<HTMLDivElement | null>, enabled: boolean) {
   const [progress, setProgress] = useState(0)
   const progressRef = useRef(0)
 
   useEffect(() => {
+    if (!enabled) return
     let rafId: number
 
     const update = () => {
@@ -202,7 +248,7 @@ function useSmoothScrollProgress(ref: React.RefObject<HTMLDivElement | null>) {
 
     rafId = requestAnimationFrame(update)
     return () => cancelAnimationFrame(rafId)
-  }, [ref])
+  }, [ref, enabled])
 
   return progress
 }
@@ -220,16 +266,18 @@ function ImageCarousel({ images }: { images: string[] }): JSX.Element {
   }, [images.length])
 
   if (images.length === 0) {
-    return <div style={{ width: "100%", height: "100%", background: "#e9e1f1" }} />
+    return <div style={{ position: "absolute", inset: 0, background: "#e9e1f1" }} />
   }
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       {images.map((src, i) => (
         <img
           key={src}
           src={src}
           alt=""
+          loading={i === 0 ? "eager" : "lazy"}
+          decoding="async"
           style={{
             position: "absolute",
             inset: 0,
@@ -252,12 +300,50 @@ function ServiceCard({
   index,
   totalCards,
   scrollProgress,
+  mode,
+  cfg,
 }: {
   service: Service
   index: number
   totalCards: number
   scrollProgress: number
+  mode: Mode
+  cfg: StackCfg
 }): JSX.Element {
+  const inner = (
+    <div
+      className={`svc-card${mode === "list" ? " svc-card--list" : ""}`}
+      style={{ background: service.bg, ["--svc-h" as string]: `${cfg.cardH}px`, ["--svc-media" as string]: `${cfg.media}px` } as React.CSSProperties}
+    >
+      <div className="svc-media">
+        <ImageCarousel images={service.images} />
+      </div>
+
+      <div className="svc-body">
+        <h3 className="svc-card-title">{service.title}</h3>
+
+        {service.bullets.length > 0 && (
+          <ul className="svc-bullets">
+            {service.bullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+        )}
+
+        <div className="svc-result" style={{ color: service.accent }}>
+          ✦ {service.result}
+        </div>
+
+        <div className="svc-cta">
+          <FillButton accent={service.accent} href={service.href} block={mode === "list"} />
+        </div>
+      </div>
+    </div>
+  )
+
+  // Phones / small screens: a plain card in the normal page flow
+  if (mode === "list") return inner
+
   const windowSize = 1 / totalCards
   const start = index * windowSize
 
@@ -268,9 +354,8 @@ function ServiceCard({
 
   // Depth is capped so the stack never grows taller than the screen, however many categories exist
   const depth = Math.min(totalCards - 1 - index, MAX_STACK_PEEK)
-  const settledTop = depth * STACK_OFFSET
-  const ENTRY_DISTANCE = 520
-  const currentTop = settledTop + ENTRY_DISTANCE * (1 - eased)
+  const settledTop = depth * cfg.offset
+  const currentTop = settledTop + cfg.entry * (1 - eased)
 
   const scale = 1 - depth * 0.018
   const opacity = eased > 0.02 ? 1 : 0
@@ -290,57 +375,7 @@ function ServiceCard({
         pointerEvents: opacity === 0 ? "none" : "auto",
       }}
     >
-      <div
-        style={{
-          background: service.bg,
-          overflow: "hidden",
-          display: "grid",
-          gridTemplateColumns: "340px 1fr",
-          height: CARD_HEIGHT,
-          boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
-        }}
-      >
-        <ImageCarousel images={service.images} />
-
-        <div
-          style={{
-            padding: 40,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: 18,
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "2rem",
-              color: "#1a0f2e",
-              margin: 0,
-            }}
-          >
-            {service.title}
-          </h3>
-
-          {service.bullets.length > 0 && (
-            <ul style={{ margin: 0, paddingLeft: 18, color: "#6b5b7b" }}>
-              {service.bullets.map((b, i) => (
-                <li key={i} style={{ marginBottom: 8 }}>
-                  {b}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div style={{ marginTop: 10, fontStyle: "italic", color: service.accent }}>
-            ✦ {service.result}
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <FillButton accent={service.accent} href={service.href} />
-          </div>
-        </div>
-      </div>
+      {inner}
     </div>
   )
 }
@@ -348,7 +383,9 @@ function ServiceCard({
 /* ───────────────── MAIN ───────────────── */
 export default function ServicesSection(): JSX.Element {
   const sectionRef = useRef<HTMLDivElement>(null)
-  const scrollProgress = useSmoothScrollProgress(sectionRef)
+  const { mode, vh } = useLayout()
+  const stacked = mode === "wide" || mode === "medium"
+  const scrollProgress = useSmoothScrollProgress(sectionRef, stacked)
 
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
@@ -368,50 +405,65 @@ export default function ServicesSection(): JSX.Element {
     }
   }, [])
 
+  // Until we know the screen size, render an empty placeholder (avoids a desktop-layout flash on phones)
+  if (mode === null) {
+    return <section ref={sectionRef} className="svc-placeholder" aria-hidden />
+  }
+
+  const cfg = mode === "medium" ? mediumCfg(vh) : WIDE_CFG
   const count = Math.max(services.length, 1)
-  const sectionHeight = `calc(100vh + ${count * CARD_SCROLL_PX}px)`
-  const stackHeight = CARD_HEIGHT + Math.min(count - 1, MAX_STACK_PEEK) * STACK_OFFSET + 24
+  const status = (
+    <>
+      {loading && <p className="svc-status">Loading…</p>}
+      {error && <p className="svc-status svc-status--error">Couldn’t load categories.</p>}
+      {!loading && !error && services.length === 0 && (
+        <p className="svc-status">New collections coming soon.</p>
+      )}
+    </>
+  )
+
+  /* ── Phones & small screens: simple vertical list ── */
+  if (mode === "list") {
+    return (
+      <section ref={sectionRef} className="svc-list">
+        <div className="svc-list-inner">
+          <h2 className="svc-title svc-title--list">
+            Our <em>Collections</em>
+          </h2>
+          {status}
+          <div className="svc-list-grid">
+            {services.map((service, i) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                index={i}
+                totalCards={services.length}
+                scrollProgress={0}
+                mode="list"
+                cfg={cfg}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  /* ── Tablets / laptops / desktops: sticky stacked cards ── */
+  const sectionHeight = `calc(100vh + ${count * cfg.scrollPx}px)`
+  const stackHeight = cfg.cardH + Math.min(count - 1, MAX_STACK_PEEK) * cfg.offset + 24
 
   return (
-    <section
-      ref={sectionRef}
-      style={{
-        height: sectionHeight,
-        background: "#f8f8f5",
-        position: "relative",
-      }}
-    >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          display: "grid",
-          gridTemplateColumns: "340px 1fr",
-          gap: 56,
-          alignItems: "center",
-          padding: "60px 64px",
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "4.6rem",
-              color: "#1a0f2e",
-            }}
-          >
-            Our <em style={{ color: "#7B4BA0" }}>Collections</em>
+    <section ref={sectionRef} className="svc-section" style={{ height: sectionHeight }}>
+      <div className={`svc-sticky svc-sticky--${mode}`}>
+        <div className="svc-title-wrap">
+          <h2 className="svc-title">
+            Our <em>Collections</em>
           </h2>
         </div>
 
-        <div style={{ position: "relative", height: stackHeight }}>
-          {loading && <p style={{ color: "#6b5b7b" }}>Loading…</p>}
-          {error && <p style={{ color: "#a33" }}>Couldn’t load categories.</p>}
-          {!loading && !error && services.length === 0 && (
-            <p style={{ color: "#6b5b7b" }}>New collections coming soon.</p>
-          )}
-
+        <div className="svc-stack" style={{ height: stackHeight }}>
+          {status}
           {services.map((service, i) => (
             <ServiceCard
               key={service.id}
@@ -419,6 +471,8 @@ export default function ServicesSection(): JSX.Element {
               index={i}
               totalCards={services.length}
               scrollProgress={scrollProgress}
+              mode={mode}
+              cfg={cfg}
             />
           ))}
         </div>

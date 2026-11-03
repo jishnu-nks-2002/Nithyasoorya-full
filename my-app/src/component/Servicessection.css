@@ -1,0 +1,130 @@
+/* ════════ Our Collections (ServicesSection) — responsive ════════
+   wide   ≥1200px     title left, stacked scroll cards right
+   medium 900–1199px  title on top, stacked scroll cards below
+   list   <900px      plain vertical list (phones & small tablets)           */
+
+.svc-placeholder { min-height: 60vh; background: #f8f8f5; }
+
+.svc-section { position: relative; background: #f8f8f5; }
+
+.svc-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  color: #1a0f2e;
+  line-height: 1.05;
+  margin: 0;
+  font-size: clamp(3rem, 4.6vw, 4.6rem);
+}
+.svc-title em { color: #7B4BA0; }
+
+.svc-status { color: #6b5b7b; }
+.svc-status--error { color: #a33; }
+
+/* ── Sticky stage ── */
+.svc-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+.svc-sticky--wide {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+  padding: 60px 64px;
+}
+.svc-sticky--medium {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: 36px 32px;
+}
+.svc-sticky--medium .svc-title { font-size: clamp(2.2rem, 4.6vw, 3rem); }
+.svc-stack { position: relative; width: 100%; }
+
+/* ── Card ── */
+.svc-card {
+  display: grid;
+  grid-template-columns: var(--svc-media, 340px) minmax(0, 1fr);
+  height: var(--svc-h, 550px);
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+.svc-media { position: relative; min-height: 0; background: #e9e1f1; }
+
+.svc-body {
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  min-width: 0;
+}
+.svc-card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  color: #1a0f2e;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.svc-bullets { margin: 0; padding-left: 18px; color: #6b5b7b; }
+.svc-bullets li { margin-bottom: 8px; overflow-wrap: anywhere; }
+.svc-result { margin-top: 10px; font-style: italic; overflow-wrap: anywhere; }
+.svc-cta { margin-top: 12px; }
+
+/* medium: tighter card so it fits shorter screens */
+.svc-sticky--medium .svc-body { padding: 28px 32px; gap: 12px; }
+.svc-sticky--medium .svc-card-title { font-size: 1.6rem; }
+.svc-sticky--medium .svc-bullets li { margin-bottom: 4px; }
+.svc-sticky--medium .svc-result {
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.svc-sticky--medium .svc-cta { margin-top: 6px; }
+
+/* ── List mode (phones / small tablets) ── */
+.svc-list {
+  background: #f8f8f5;
+  padding: clamp(48px, 9vw, 80px) clamp(16px, 5vw, 40px) clamp(56px, 10vw, 96px);
+}
+.svc-list-inner { max-width: 900px; margin: 0 auto; }
+.svc-title--list {
+  font-size: clamp(2.5rem, 10vw, 3.6rem);
+  margin-bottom: clamp(24px, 6vw, 40px);
+}
+.svc-list-grid { display: grid; gap: clamp(18px, 4vw, 28px); }
+
+.svc-card--list {
+  height: auto;
+  grid-template-columns: minmax(0, 1fr);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(60, 30, 100, 0.10);
+}
+.svc-card--list .svc-media { aspect-ratio: 5 / 4; }
+.svc-card--list .svc-body { padding: 22px 20px 26px; gap: 14px; justify-content: flex-start; }
+.svc-card--list .svc-card-title { font-size: clamp(1.5rem, 6vw, 1.9rem); }
+.svc-card--list .svc-bullets { font-size: 0.95rem; }
+.svc-card--list .svc-bullets li { margin-bottom: 6px; }
+.svc-card--list .svc-result { margin-top: 2px; font-size: 0.95rem; line-height: 1.5; }
+.svc-card--list .svc-cta { margin-top: 6px; }
+
+/* bigger phones & small tablets: image beside the text */
+@media (min-width: 641px) {
+  .svc-card--list { grid-template-columns: 280px minmax(0, 1fr); }
+  .svc-card--list .svc-media { aspect-ratio: auto; min-height: 320px; }
+  .svc-card--list .svc-body { padding: 28px 30px; justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .svc-card--list .svc-body { padding: 18px 16px 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-card { box-shadow: none; }
+}
