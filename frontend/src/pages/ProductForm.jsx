@@ -90,7 +90,7 @@ function Toggle({ checked, onChange }) {
 //   onClose     : () => void
 //   onCreated   : (cat) => void   — called after create
 //   onUpdated   : (cat) => void   — called after edit
-function CategoryQuickModal({ mode = 'create', initialName = '', editData = null, onClose, onCreated, onUpdated }) {
+function CategoryQuickModal({ mode = 'create', initialName = '', editData = null, onClose, onCreated, onUpdated, onDeleted }) {
   const imgRef  = useRef(null);
   const isEdit  = mode === 'edit';
 
@@ -98,6 +98,7 @@ function CategoryQuickModal({ mode = 'create', initialName = '', editData = null
   const [preview, setPreview] = useState(editData?.image?.url || null);
   const [imgFile, setImgFile] = useState(null);
   const [removeImg, setRemoveImg] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name:        isEdit ? (editData?.name || '')        : initialName,
     slug:        isEdit ? (editData?.slug || '')        : (initialName ? autoSlug(initialName) : ''),
@@ -138,6 +139,30 @@ function CategoryQuickModal({ mode = 'create', initialName = '', editData = null
     const token = localStorage.getItem('gh_token');
     if (!token) { toast.error('Not authenticated — please log in again'); return null; }
     return token;
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete category "${editData.name}"? This cannot be undone.`)) return;
+    const token = getToken();
+    if (!token) return;
+
+    setDeleting(true);
+    try {
+      const res  = await fetch(`${API_BASE}/api/categories/${editData._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.status === 401) throw new Error('Session expired — please log in again');
+      if (!data.success)      throw new Error(data.message || 'Delete failed');
+
+      toast.success('Category deleted');
+      onDeleted?.(editData);
+    } catch (err) {
+      toast.error(err.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -237,16 +262,25 @@ function CategoryQuickModal({ mode = 'create', initialName = '', editData = null
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose}
-            style={{ fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 7, border: '1px solid var(--border-color, #d1d5db)', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
-            Cancel
-          </button>
-          <button type="button" onClick={handleSave} disabled={saving}
-            style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 7, border: 'none', background: 'var(--text-primary, #111)', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.65 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-            {saving && <Spinner size={14} />}
-            {isEdit ? 'Save changes' : 'Create category'}
-          </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: isEdit ? 'space-between' : 'flex-end' }}>
+          {isEdit && (
+            <button type="button" onClick={handleDelete} disabled={deleting || saving}
+              style={{ fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 7, border: '1px solid #e5484d', background: 'transparent', color: '#e5484d', cursor: (deleting || saving) ? 'not-allowed' : 'pointer', opacity: (deleting || saving) ? 0.65 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+              {deleting && <Spinner size={14} />}
+              Delete category
+            </button>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={onClose}
+              style={{ fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 7, border: '1px solid var(--border-color, #d1d5db)', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+            <button type="button" onClick={handleSave} disabled={saving || deleting}
+              style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 7, border: 'none', background: 'var(--text-primary, #111)', color: '#fff', cursor: (saving || deleting) ? 'not-allowed' : 'pointer', opacity: (saving || deleting) ? 0.65 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+              {saving && <Spinner size={14} />}
+              {isEdit ? 'Save changes' : 'Create category'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -306,6 +340,12 @@ function CategoryInput({ value, onChange }) {
   const handleModalUpdated = (updatedCat) => {
     setAllCategories((prev) => prev.map((c) => c._id === updatedCat._id ? updatedCat : c));
     if (value === editTarget?.name) onChange(updatedCat.name);
+    setModalMode(null);
+  };
+
+  const handleModalDeleted = (deletedCat) => {
+    setAllCategories((prev) => prev.filter((c) => c._id !== deletedCat._id));
+    if (value === deletedCat.name) onChange('');
     setModalMode(null);
   };
 
@@ -392,6 +432,7 @@ function CategoryInput({ value, onChange }) {
           editData={editTarget}
           onClose={() => setModalMode(null)}
           onUpdated={handleModalUpdated}
+          onDeleted={handleModalDeleted}
         />
       )}
     </>

@@ -37,7 +37,7 @@ const uploadProductVideos = async (files, category, title) => {
     out.push({
       url:      result.secure_url,
       publicId: result.public_id,
-      poster:   result.secure_url.replace(/\.[a-z0-9]+$/i, '.jpg'),
+      poster:   /res\.cloudinary\.com/.test(result.secure_url) ? result.secure_url.replace(/\.[a-z0-9]+$/i, '.jpg') : '',
       title:    title || '',
     });
   }
