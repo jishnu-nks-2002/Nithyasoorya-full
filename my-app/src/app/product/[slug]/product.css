@@ -59,7 +59,8 @@
 .pp-main-video {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;                 /* fills the whole box, no black bars */
+  object-position: center;
   background: #0d0818;
   display: block;
 }
