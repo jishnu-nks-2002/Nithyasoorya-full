@@ -6,6 +6,7 @@ import {
   updateProduct,
   fetchProductById,
   deleteProductImage,
+  deleteProductVideo,
   setPrimaryImage,
 } from '../api/products';
 import styles from './ProductForm.module.css';
@@ -17,6 +18,21 @@ const STONE_OPTIONS  = [
   'Obsidian', 'Black Tourmaline', 'Labradorite', 'Amethyst', 'Rose Quartz',
   'Smoky Quartz', 'Citrine', 'Lapis Lazuli', 'Malachite', 'Moonstone',
   "Tiger's Eye", 'Onyx', 'Jasper', 'Selenite', 'Pyrite', 'Clear Quartz', 'Carnelian',
+];
+
+const MAX_VIDEOS   = 3;
+const MAX_VIDEO_MB = 100;
+
+const EMPTY_SECTION = {
+  heading: '', eyebrow: '', body: '', bulletsText: '',
+  layout: 'text', align: 'left', accent: '', isVisible: true,
+};
+
+const SECTION_LAYOUTS = [
+  { value: 'text',      label: 'Text paragraphs' },
+  { value: 'list',      label: 'Bullet list' },
+  { value: 'columns',   label: 'Two-column list' },
+  { value: 'highlight', label: 'Highlight box' },
 ];
 
 const API_BASE =
@@ -382,12 +398,24 @@ function CategoryInput({ value, onChange }) {
   );
 }
 
+// ── Local video preview (object URL created once, revoked on unmount) ─────────
+function LocalVideo({ file }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setSrc(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  return <video src={src} muted playsInline preload="metadata" />;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ProductForm() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const isEdit   = Boolean(id);
   const filesRef = useRef(null);
+  const videoRef = useRef(null);
 
   const [form,        setForm]        = useState(EMPTY);
   const [images,      setImages]      = useState([]);
@@ -395,6 +423,10 @@ export default function ProductForm() {
   const [loading,     setLoading]     = useState(isEdit);
   const [saving,      setSaving]      = useState(false);
   const [deletingImg, setDeletingImg] = useState(null);
+  const [videos,      setVideos]      = useState([]);   // saved videos
+  const [videoFiles,  setVideoFiles]  = useState([]);   // new, not yet uploaded
+  const [deletingVid, setDeletingVid] = useState(null);
+  const [sections,    setSections]    = useState([]);   // custom sections
 
   // ── Load product (edit mode) ─────────────────────────────────────────────
   useEffect(() => {
@@ -428,6 +460,17 @@ export default function ProductForm() {
           isActive:         p.isActive          ?? true,
         });
         setImages(p.images ?? []);
+        setVideos(p.videos ?? []);
+        setSections((p.customSections ?? []).map((cs) => ({
+          heading:     cs.heading ?? '',
+          eyebrow:     cs.eyebrow ?? '',
+          body:        cs.body ?? '',
+          bulletsText: (cs.bullets ?? []).join('\n'),
+          layout:      cs.layout ?? 'text',
+          align:       cs.align ?? 'left',
+          accent:      cs.accent ?? '',
+          isVisible:   cs.isVisible ?? true,
+        })));
       } catch {
         toast.error('Failed to load product');
         navigate('/products');
@@ -466,6 +509,59 @@ export default function ProductForm() {
 
   const removeLocalFile = (idx) =>
     setFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  // ── Video handling ───────────────────────────────────────────────────────
+  const onVideosChange = (e) => {
+    const picked = Array.from(e.target.files || []);
+    e.target.value = '';
+    addVideoFiles(picked);
+  };
+
+  const addVideoFiles = (picked) => {
+    const room = MAX_VIDEOS - videos.length - videoFiles.length;
+    const valid = [];
+    for (const f of picked) {
+      if (!f.type.startsWith('video/')) { toast.error(`${f.name} is not a video`); continue; }
+      if (f.size > MAX_VIDEO_MB * 1024 * 1024) { toast.error(`${f.name} is larger than ${MAX_VIDEO_MB} MB`); continue; }
+      valid.push(f);
+    }
+    if (valid.length > room) toast.error(`Only ${MAX_VIDEOS} videos allowed per product`);
+    setVideoFiles((prev) => [...prev, ...valid.slice(0, Math.max(room, 0))]);
+  };
+
+  const removeLocalVideo = (idx) =>
+    setVideoFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleDeleteVideo = async (vidId) => {
+    if (!window.confirm('Delete this video?')) return;
+    setDeletingVid(vidId);
+    try {
+      const res = await deleteProductVideo(id, vidId);
+      setVideos(res.data.data.videos ?? []);
+      toast.success('Video deleted');
+    } catch {
+      toast.error('Delete failed');
+    } finally {
+      setDeletingVid(null);
+    }
+  };
+
+  // ── Custom section helpers ───────────────────────────────────────────────
+  const addSection    = () => setSections((prev) => [...prev, { ...EMPTY_SECTION }]);
+  const removeSection = (idx) => {
+    if (!window.confirm('Remove this section?')) return;
+    setSections((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const patchSection  = (idx, patch) =>
+    setSections((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+  const moveSection   = (idx, dir) =>
+    setSections((prev) => {
+      const to = idx + dir;
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[to]] = [next[to], next[idx]];
+      return next;
+    });
 
   // ── Image actions ────────────────────────────────────────────────────────
   const handleDeleteImage = async (imgId) => {
@@ -520,6 +616,20 @@ export default function ProductForm() {
       ));
 
       files.forEach((f) => fd.append('images', f));
+      videoFiles.forEach((f) => fd.append('videos', f));
+
+      fd.append('customSections', JSON.stringify(
+        sections.map((s) => ({
+          heading:   s.heading,
+          eyebrow:   s.eyebrow,
+          body:      s.body,
+          bullets:   s.bulletsText.split('\n').map((b) => b.trim()).filter(Boolean),
+          layout:    s.layout,
+          align:     s.align,
+          accent:    s.accent,
+          isVisible: s.isVisible,
+        }))
+      ));
 
       if (isEdit) {
         await updateProduct(id, fd);
@@ -677,6 +787,90 @@ export default function ProductForm() {
               </div>
             </div>
           </div>
+
+          {/* Custom sections */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>Custom sections</div>
+            <p className={styles.hint} style={{ marginTop: -6, marginBottom: 14 }}>
+              Add your own headed sections (e.g. "The Story", "What's Included", "Meaning & Symbolism").
+              They appear on the product page below the main details, in this order.
+            </p>
+
+            {sections.length === 0 && (
+              <div className={styles.emptyNote}>No custom sections yet.</div>
+            )}
+
+            <div className={styles.sectionList}>
+              {sections.map((sec, idx) => (
+                <div key={idx} className={`${styles.secCard} ${sec.isVisible ? '' : styles.secHidden}`}>
+                  <div className={styles.secTop}>
+                    <span className={styles.secNum}>Section {idx + 1}</span>
+                    <div className={styles.secTools}>
+                      <label className={styles.secVisible}>
+                        <Toggle checked={sec.isVisible} onChange={(v) => patchSection(idx, { isVisible: v })} />
+                        <span>{sec.isVisible ? 'Visible' : 'Hidden'}</span>
+                      </label>
+                      <button type="button" className={styles.iconBtn} onClick={() => moveSection(idx, -1)} disabled={idx === 0} title="Move up">↑</button>
+                      <button type="button" className={styles.iconBtn} onClick={() => moveSection(idx, 1)} disabled={idx === sections.length - 1} title="Move down">↓</button>
+                      <button type="button" className={`${styles.iconBtn} ${styles.iconBtnDanger}`} onClick={() => removeSection(idx)} title="Remove section">✕</button>
+                    </div>
+                  </div>
+
+                  <div className={styles.grid2}>
+                    <div className={styles.formGroup}>
+                      <label>Section heading</label>
+                      <input value={sec.heading} onChange={(e) => patchSection(idx, { heading: e.target.value })} placeholder="The Story Behind This Piece" />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label>Small label above heading (optional)</label>
+                      <input value={sec.eyebrow} onChange={(e) => patchSection(idx, { eyebrow: e.target.value })} placeholder="Craftsmanship" />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Layout</label>
+                      <select value={sec.layout} onChange={(e) => patchSection(idx, { layout: e.target.value })}>
+                        {SECTION_LAYOUTS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label>Alignment</label>
+                      <select value={sec.align} onChange={(e) => patchSection(idx, { align: e.target.value })}>
+                        <option value="left">Left</option>
+                        <option value="center">Centered</option>
+                      </select>
+                    </div>
+
+                    <div className={`${styles.formGroup} ${styles.fullCol}`}>
+                      <label>Accent colour</label>
+                      <div className={styles.colorRow}>
+                        <input type="color" value={sec.accent || '#7c5cbf'} onChange={(e) => patchSection(idx, { accent: e.target.value })} className={styles.colorSwatch} />
+                        <input value={sec.accent} onChange={(e) => patchSection(idx, { accent: e.target.value })} placeholder="#7c5cbf (leave blank for default)" />
+                        {sec.accent && (
+                          <button type="button" className={styles.iconBtn} onClick={() => patchSection(idx, { accent: '' })} title="Reset colour">↺</button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={`${styles.formGroup} ${styles.fullCol}`}>
+                      <label>Text</label>
+                      <textarea rows={4} value={sec.body} onChange={(e) => patchSection(idx, { body: e.target.value })} placeholder="Write the content. Leave a blank line between paragraphs." />
+                    </div>
+
+                    {sec.layout !== 'text' && (
+                      <div className={`${styles.formGroup} ${styles.fullCol}`}>
+                        <label>List items (one per line)</label>
+                        <textarea rows={4} value={sec.bulletsText} onChange={(e) => patchSection(idx, { bulletsText: e.target.value })} placeholder={'Hand-poured resin\nNatural amethyst cluster\nGift box included'} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" className={`${styles.btn} ${styles.addSecBtn}`} onClick={addSection}>
+              + Add section
+            </button>
+          </div>
         </div>
 
         {/* ══════════════ RIGHT COLUMN ══════════════ */}
@@ -779,6 +973,48 @@ export default function ProductForm() {
             </div>
 
             <input ref={filesRef} type="file" accept="image/*" multiple onChange={onFilesChange} style={{ display: 'none' }} />
+          </div>
+
+          {/* Videos */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>Videos</div>
+
+            {(videos.length > 0 || videoFiles.length > 0) && (
+              <div className={styles.vidGrid}>
+                {videos.map((v) => (
+                  <div key={v._id} className={styles.vidItem}>
+                    <video src={v.url} poster={v.poster || undefined} controls preload="metadata" playsInline />
+                    <button type="button" className={`${styles.imgBtn} ${styles.imgBtnDanger} ${styles.vidDel}`}
+                      onClick={() => handleDeleteVideo(v._id)} disabled={deletingVid === v._id} title="Delete video">
+                      {deletingVid === v._id ? <Spinner size={12} /> : '✕'}
+                    </button>
+                  </div>
+                ))}
+                {videoFiles.map((f, idx) => (
+                  <div key={`${f.name}-${idx}`} className={styles.vidItem}>
+                    <LocalVideo file={f} />
+                    <button type="button" className={`${styles.imgBtn} ${styles.imgBtnDanger} ${styles.vidDel}`}
+                      onClick={() => removeLocalVideo(idx)} title="Remove">✕</button>
+                    <span className={`${styles.primaryTag} ${styles.newTag}`}>New · {(f.size / 1048576).toFixed(1)} MB</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {videos.length + videoFiles.length < MAX_VIDEOS && (
+              <div className={styles.uploadZone}
+                onClick={() => videoRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); addVideoFiles(Array.from(e.dataTransfer.files)); }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="2" y="5" width="14" height="14" rx="2" /><path d="M22 8l-6 4 6 4V8z" />
+                </svg>
+                <span>Click or drag to upload a video</span>
+                <span className={styles.uploadHint}>Up to {MAX_VIDEOS} videos · MP4 / WebM / MOV · max {MAX_VIDEO_MB} MB each</span>
+              </div>
+            )}
+            <input ref={videoRef} type="file" accept="video/mp4,video/webm,video/quicktime" multiple onChange={onVideosChange} style={{ display: 'none' }} />
+            <p className={styles.hint} style={{ marginTop: 10 }}>Videos are shown in the product gallery on the website.</p>
           </div>
         </div>
       </div>

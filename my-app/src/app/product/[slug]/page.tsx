@@ -12,6 +12,7 @@ import ReviewSection from '@/component/Reviewsection';
 import Footer from '@/component/Footer';
 import MasonryGallery  from '@/component/Masonrygallery'
 import RelatedProducts from '@/component/Relatedproducts';
+import './product.css';
 
 const cormorant = Cormorant_Garamond({ weight: ['300', '400', '500', '600'], subsets: ['latin'], display: 'swap' });
 const jost      = Jost({ weight: ['300', '400', '500', '600'], subsets: ['latin'], display: 'swap' });
@@ -42,6 +43,16 @@ const getCategoryName = (c: CategoryField | undefined | null): string =>
   !c ? '' : typeof c === 'string' ? c : c.name;
 
 interface ProductImage { url: string; alt: string; isPrimary: boolean; _id: string; }
+interface ProductVideo { _id: string; url: string; poster?: string; title?: string; }
+interface CustomSection {
+  _id?: string; heading?: string; eyebrow?: string; body?: string; bullets?: string[];
+  layout?: 'text' | 'list' | 'columns' | 'highlight'; align?: 'left' | 'center';
+  accent?: string; isVisible?: boolean;
+}
+type MediaItem =
+  | { kind: 'image'; key: string; url: string; alt: string }
+  | { kind: 'video'; key: string; url: string; poster: string; alt: string };
+
 interface Product {
   _id: string; name: string; slug: string; category: CategoryField;
   series: string; priceDisplay: string; price: number;
@@ -51,6 +62,8 @@ interface Product {
   careInstructions: string; shippingInfo: string;
   isNew: boolean; isFeatured: boolean; availability: string;
   images: ProductImage[];
+  videos?: ProductVideo[];
+  customSections?: CustomSection[];
 }
 
 const inputStyle: React.CSSProperties = {
@@ -122,7 +135,7 @@ function EnquiryModal({ product, onClose }: { product: Product; onClose: () => v
     >
       <div style={{
         background: '#faf8f5', borderRadius: 20, width: '100%', maxWidth: 480,
-        padding: '36px 32px', position: 'relative',
+        padding: 'clamp(24px,5vw,36px) clamp(18px,5vw,32px)', position: 'relative',
         boxShadow: '0 32px 80px rgba(50,15,100,0.25)',
         maxHeight: '90vh', overflowY: 'auto',
       }}>
@@ -214,6 +227,46 @@ function EnquiryModal({ product, onClose }: { product: Product; onClose: () => v
   );
 }
 
+// ── Custom sections (created in Admin → Products → Custom sections) ───────────
+function CustomSections({ sections }: { sections?: CustomSection[] }) {
+  const visible = (sections || []).filter(
+    (s) => s.isVisible !== false && (s.heading || s.body || s.bullets?.length)
+  );
+  if (!visible.length) return null;
+
+  return (
+    <div className="pp-cs">
+      {visible.map((s, i) => {
+        const layout = s.layout || 'text';
+        const accent = s.accent || ACCENT;
+        const paragraphs = (s.body || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+        const showList = layout !== 'text' && !!s.bullets?.length;
+        return (
+          <section
+            key={s._id || i}
+            className={`pp-cs-sec pp-cs-${layout}${s.align === 'center' ? ' pp-cs-center' : ''}`}
+            style={{ ['--cs-accent' as string]: accent } as React.CSSProperties}
+          >
+            <div className="pp-cs-inner">
+              {s.eyebrow && <p className={`pp-cs-eyebrow ${jost.className}`}>{s.eyebrow}</p>}
+              {s.heading && <h2 className={`pp-cs-heading ${cormorant.className}`}>{s.heading}</h2>}
+              {s.heading && <span className="pp-cs-rule" aria-hidden />}
+              {paragraphs.map((p, pi) => (
+                <p key={pi} className={`pp-cs-body ${jost.className}`}>{p}</p>
+              ))}
+              {showList && (
+                <ul className={`pp-cs-list ${jost.className}`}>
+                  {s.bullets!.map((b, bi) => <li key={bi}>{b}</li>)}
+                </ul>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProductPage() {
   const params = useParams();
@@ -221,7 +274,7 @@ export default function ProductPage() {
 
   const [product,     setProduct]     = useState<Product | null>(null);
   const [loading,     setLoading]     = useState(true);
-  const [activeImg,   setActiveImg]   = useState(0);
+  const [activeImg,   setActiveImg]   = useState(0);   // index into the media list (images + videos)
   const [notFound,    setNotFound]    = useState(false);
   const [showEnquiry, setShowEnquiry] = useState(false);
 
@@ -268,7 +321,7 @@ export default function ProductPage() {
       {showEnquiry && product && <EnquiryModal product={product} onClose={() => setShowEnquiry(false)} />}
 
       <div style={{ minHeight: '100vh', background: '#faf8f5', paddingTop: 90 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+        <div className="pp-wrap">
 
           {loading && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -286,42 +339,84 @@ export default function ProductPage() {
           )}
 
           {!loading && product && (() => {
-            const images  = product.images || [];
-            const mainImg = cleanUrl(images[activeImg]?.url) || '/images/placeholder.jpeg';
+            const media: MediaItem[] = [
+              ...(product.images || []).map((im, i): MediaItem => ({
+                kind: 'image', key: im._id || `img-${i}`, url: cleanUrl(im.url), alt: im.alt || product.name,
+              })),
+              ...(product.videos || []).map((v, i): MediaItem => ({
+                kind: 'video', key: v._id || `vid-${i}`, url: cleanUrl(v.url), poster: cleanUrl(v.poster), alt: v.title || product.name,
+              })),
+            ].filter((m) => m.url);
+            const current = media[Math.min(activeImg, Math.max(media.length - 1, 0))];
+            const goTo = (dir: number) => setActiveImg((i) => (i + dir + media.length) % media.length);
             return (
               <>
-                <a href={`/collections/${encodeURIComponent(categoryName)}`} className={jost.className}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 32, fontSize: 9, letterSpacing: '0.24em', textTransform: 'uppercase', color: ACCENT, textDecoration: 'none', opacity: 0.75 }}>
+                <a href={`/collections/${encodeURIComponent(categoryName)}`} className={`pp-back ${jost.className}`}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                   </svg>
                   {categoryName}
                 </a>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'start' }}>
+                <div className="pp-grid">
 
-                  {/* Images */}
-                  <div>
-                    <div style={{ borderRadius: 16, overflow: 'hidden', background: '#f0edf6', aspectRatio: '1/1', marginBottom: 12 }}>
-                      <img src={mainImg} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {/* Media gallery — portrait */}
+                  <div className="pp-gallery">
+                    <div className="pp-main">
+                      {current?.kind === 'video' ? (
+                        <video
+                          key={current.key}
+                          className="pp-main-video"
+                          src={current.url}
+                          poster={current.poster || undefined}
+                          controls
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img
+                          key={current?.key || 'placeholder'}
+                          src={current?.url || '/images/placeholder.jpeg'}
+                          alt={current?.alt || product.name}
+                        />
+                      )}
+
+                      {media.length > 1 && (
+                        <>
+                          <button type="button" className="pp-arrow pp-arrow-prev" onClick={() => goTo(-1)} aria-label="Previous">‹</button>
+                          <button type="button" className="pp-arrow pp-arrow-next" onClick={() => goTo(1)} aria-label="Next">›</button>
+                        </>
+                      )}
                     </div>
-                    {images.length > 1 && (
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {images.map((img, i) => (
-                          <div key={img._id} onClick={() => setActiveImg(i)} style={{
-                            width: 64, height: 64, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
-                            border: `2px solid ${activeImg === i ? ACCENT : 'transparent'}`,
-                            opacity: activeImg === i ? 1 : 0.6, transition: 'all 0.2s',
-                          }}>
-                            <img src={cleanUrl(img.url)} alt={img.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
+
+                    {media.length > 1 && (
+                      <div className="pp-thumbs">
+                        {media.map((m, i) => (
+                          <button
+                            type="button"
+                            key={m.key}
+                            onClick={() => setActiveImg(i)}
+                            className={`pp-thumb${activeImg === i ? ' active' : ''}`}
+                            aria-label={m.kind === 'video' ? `Play video ${i + 1}` : `Show image ${i + 1}`}
+                          >
+                            {m.kind === 'video' ? (
+                              <>
+                                {m.poster && <img src={m.poster} alt="" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />}
+                                <span className="pp-play" aria-hidden>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                                </span>
+                              </>
+                            ) : (
+                              <img src={m.url} alt={m.alt} />
+                            )}
+                          </button>
                         ))}
                       </div>
                     )}
                   </div>
 
                   {/* Details */}
-                  <div>
+                  <div className="pp-info">
                     {product.series && (
                       <p className={jost.className} style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: ACCENT, marginBottom: 8 }}>{product.series}</p>
                     )}
@@ -333,7 +428,7 @@ export default function ProductPage() {
                     )}
 
                     {/* Price + availability */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '20px 0 24px' }}>
+                    <div className="pp-price-row">
                       <span className={jost.className} style={{ fontSize: 26, fontWeight: 500, color: '#1a1030' }}>
                         {product.priceDisplay || `₹${product.price}`}
                       </span>
@@ -351,7 +446,7 @@ export default function ProductPage() {
                     )}
 
                     {/* ── ACTION BUTTONS ── */}
-                    <div style={{ display: 'flex', gap: 12, marginBottom: 28 }}>
+                    <div className="pp-actions">
                       {/* Enquiry */}
                       <button onClick={() => setShowEnquiry(true)} className={jost.className} style={{
                         flex: 1, padding: '13px 16px', borderRadius: 50,
@@ -430,6 +525,8 @@ export default function ProductPage() {
                     )}
                   </div>
                 </div>
+
+                <CustomSections sections={product.customSections} />
               </>
             );
           })()}

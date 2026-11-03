@@ -9,6 +9,41 @@ const parseJSON = (val, fallback = []) => {
   try { return JSON.parse(val); } catch { return fallback; }
 };
 
+// Multer `.fields()` gives { images: [], videos: [] }; keep `.array()` working too.
+const getUploaded = (req, field) =>
+  Array.isArray(req.files) ? (field === 'images' ? req.files : []) : (req.files?.[field] || []);
+
+const cleanCustomSections = (raw) =>
+  parseJSON(raw, [])
+    .map((s) => ({
+      heading:   String(s.heading  || '').trim(),
+      eyebrow:   String(s.eyebrow  || '').trim(),
+      body:      String(s.body     || '').trim(),
+      bullets:   (Array.isArray(s.bullets) ? s.bullets : []).map((b) => String(b).trim()).filter(Boolean),
+      layout:    ['text', 'list', 'columns', 'highlight'].includes(s.layout) ? s.layout : 'text',
+      align:     s.align === 'center' ? 'center' : 'left',
+      accent:    /^#[0-9a-fA-F]{3,8}$/.test(s.accent || '') ? s.accent : '',
+      isVisible: s.isVisible === undefined ? true : s.isVisible === true || s.isVisible === 'true',
+    }))
+    .filter((s) => s.heading || s.body || s.bullets.length);
+
+const uploadProductVideos = async (files, category, title) => {
+  const out = [];
+  for (const file of files) {
+    const result = await uploadToCloudinary(file.buffer, {
+      folder: `products/videos/${(category || 'general').trim().replace(/\s+/g, '-').toLowerCase()}`,
+      resource_type: 'video',
+    });
+    out.push({
+      url:      result.secure_url,
+      publicId: result.public_id,
+      poster:   result.secure_url.replace(/\.[a-z0-9]+$/i, '.jpg'),
+      title:    title || '',
+    });
+  }
+  return out;
+};
+
 const buildProductFilter = (query) => {
   const filter = {};
   if (query.category)     filter.category     = query.category;
@@ -88,9 +123,10 @@ exports.createProduct = async (req, res) => {
     } = req.body;
 
     const images = [];
-    if (req.files && req.files.length > 0) {
-      for (let i = 0; i < req.files.length; i++) {
-        const result = await uploadToCloudinary(req.files[i].buffer, {
+    const imageFiles = getUploaded(req, 'images');
+    if (imageFiles.length > 0) {
+      for (let i = 0; i < imageFiles.length; i++) {
+        const result = await uploadToCloudinary(imageFiles[i].buffer, {
           folder: `products/${(category || 'general').trim().replace(/\s+/g, '-').toLowerCase()}`,
           resource_type: 'image',
         });
@@ -102,6 +138,8 @@ exports.createProduct = async (req, res) => {
         });
       }
     }
+
+    const videos = await uploadProductVideos(getUploaded(req, 'videos'), category, name);
 
     const product = await Product.create({
       name, slug, category, series, material, description,
@@ -118,6 +156,8 @@ exports.createProduct = async (req, res) => {
       careInstructions, shippingInfo,
       order:        Number(order) || 0,
       images,
+      videos,
+      customSections: cleanCustomSections(req.body.customSections),
     });
 
     res.status(201).json({ success: true, data: product, message: 'Product created' });
@@ -150,8 +190,15 @@ exports.updateProduct = async (req, res) => {
     if (req.body.stoneTypes !== undefined) product.stoneTypes = parseJSON(req.body.stoneTypes);
     if (req.body.tags       !== undefined) product.tags       = parseJSON(req.body.tags);
 
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
+    if (req.body.customSections !== undefined)
+      product.customSections = cleanCustomSections(req.body.customSections);
+
+    const newVideos = await uploadProductVideos(getUploaded(req, 'videos'), product.category, product.name);
+    newVideos.forEach((v) => product.videos.push(v));
+
+    const newImageFiles = getUploaded(req, 'images');
+    if (newImageFiles.length > 0) {
+      for (const file of newImageFiles) {
         const result = await uploadToCloudinary(file.buffer, {
           folder: `products/${(product.category || 'general').trim().replace(/\s+/g, '-').toLowerCase()}`,
           resource_type: 'image',
@@ -195,6 +242,26 @@ exports.deleteProductImage = async (req, res) => {
   }
 };
 
+// DELETE /api/products/:id/videos/:videoId  (admin)
+exports.deleteProductVideo = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    const vid = product.videos.id(req.params.videoId);
+    if (!vid) return res.status(404).json({ success: false, message: 'Video not found' });
+
+    if (vid.publicId)
+      await cloudinary.uploader.destroy(vid.publicId, { resource_type: 'video' }).catch(console.error);
+    product.videos.pull(req.params.videoId);
+
+    await product.save();
+    res.json({ success: true, data: product, message: 'Video deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // PUT /api/products/:id/images/:imageId/primary  (admin)
 exports.setPrimaryImage = async (req, res) => {
   try {
@@ -219,6 +286,9 @@ exports.deleteProduct = async (req, res) => {
 
     for (const img of product.images) {
       if (img.publicId) await cloudinary.uploader.destroy(img.publicId).catch(console.error);
+    }
+    for (const vid of product.videos || []) {
+      if (vid.publicId) await cloudinary.uploader.destroy(vid.publicId, { resource_type: 'video' }).catch(console.error);
     }
     await product.deleteOne();
     res.json({ success: true, message: 'Product deleted' });

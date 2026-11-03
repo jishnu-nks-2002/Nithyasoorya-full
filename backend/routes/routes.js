@@ -11,6 +11,7 @@ const {
   updateProduct,
   deleteProduct,
   deleteProductImage,
+  deleteProductVideo,
   setPrimaryImage,
   reorderProducts,
   getMeta,
@@ -34,6 +35,12 @@ const {
 const { protect } = require('../middleware/auth');
 const { upload }  = require('../middleware/upload');
 
+// Product form sends up to 10 images + up to 3 videos
+const productUpload = upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'videos', maxCount: 3  },
+]);
+
 // ════════════════════════════════════════════════════════════════════════════
 //  PRODUCT ROUTES  →  /api/products
 // ════════════════════════════════════════════════════════════════════════════
@@ -46,11 +53,12 @@ router.get('/products/slug/:slug', getProductBySlug);
 // Admin
 router.get('/products/admin',                       protect, getProductsAdmin);
 router.get('/products/id/:id',                      protect, getProductById);
-router.post('/products',                            protect, upload.array('images', 10), createProduct);
+router.post('/products',                            protect, productUpload, createProduct);
 router.put('/products/reorder',                     protect, reorderProducts);
-router.put('/products/:id',                         protect, upload.array('images', 10), updateProduct);
+router.put('/products/:id',                         protect, productUpload, updateProduct);
 router.delete('/products/:id',                      protect, deleteProduct);
 router.delete('/products/:id/images/:imageId',      protect, deleteProductImage);
+router.delete('/products/:id/videos/:videoId',      protect, deleteProductVideo);
 router.put('/products/:id/images/:imageId/primary', protect, setPrimaryImage);
 
 // ════════════════════════════════════════════════════════════════════════════

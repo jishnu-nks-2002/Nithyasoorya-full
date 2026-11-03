@@ -18,5 +18,6 @@ export const createProduct      = (fd)     => API.post('/products', fd);
 export const updateProduct      = (id, fd) => API.put(`/products/${id}`, fd);
 export const deleteProduct      = (id)     => API.delete(`/products/${id}`);
 export const deleteProductImage = (id, imgId) => API.delete(`/products/${id}/images/${imgId}`);
+export const deleteProductVideo = (id, vidId) => API.delete(`/products/${id}/videos/${vidId}`);
 export const setPrimaryImage    = (id, imgId) => API.put(`/products/${id}/images/${imgId}/primary`);
 export const reorderProducts    = (ids)    => API.put('/products/reorder', { orderedIds: ids });

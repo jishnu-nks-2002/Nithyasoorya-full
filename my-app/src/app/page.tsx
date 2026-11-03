@@ -16,6 +16,7 @@ import CustomCursor from '@/component/Customcursor';
 import FlowingMenu from '@/component/Flowingmenu';
 import CuratedSection from '@/component/CuratedSection';
 import Empavaidomegallery  from '@/component/Empavaidomegallery';
+import CrystalWisdomSection from '@/component/CrystalWisdomSection';
 
 
 const App: React.FC = () => {
@@ -45,6 +46,9 @@ const App: React.FC = () => {
       <ServicesSection />
 
       <CuratedSection />
+
+      {/* Crystal Wisdom — data from The Empavai Crystal Guide */}
+      <CrystalWisdomSection />
        
         
 

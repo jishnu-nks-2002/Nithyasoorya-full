@@ -67,6 +67,30 @@ const productSchema = new mongoose.Schema(
       },
     ],
 
+    // Product videos (uploaded from the admin panel, shown on the product page)
+    videos: [
+      {
+        url:      { type: String, required: true },
+        publicId: { type: String },
+        poster:   { type: String, default: '' },
+        title:    { type: String, default: '' },
+      },
+    ],
+
+    // Custom sections (heading + content) created in the admin panel
+    customSections: [
+      {
+        heading:  { type: String, default: '' },
+        eyebrow:  { type: String, default: '' },
+        body:     { type: String, default: '' },
+        bullets:  [{ type: String }],
+        layout:   { type: String, enum: ['text', 'list', 'columns', 'highlight'], default: 'text' },
+        align:    { type: String, enum: ['left', 'center'], default: 'left' },
+        accent:   { type: String, default: '' },
+        isVisible:{ type: Boolean, default: true },
+      },
+    ],
+
     dimensions:       { type: String, default: '' },
     weight:           { type: String, default: '' },
     stoneTypes:       [{ type: String }],
