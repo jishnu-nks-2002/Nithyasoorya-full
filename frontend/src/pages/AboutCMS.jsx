@@ -429,7 +429,6 @@ export default function AboutCMS() {
             <span className="cms-brand-name">Empavai CMS</span>
             <span className="cms-brand-page">/ About Page</span>
           </div>
-          <a href="/" target="_blank" rel="noreferrer" className="cms-preview-btn">Preview Site ↗</a>
         </div>
       </header>
 
