@@ -97,6 +97,24 @@ export default function CollectionsPage() {
 
   return (
     <>
+      <style>{`
+        .cat-banner {
+          min-height: clamp(280px, 31vw, 400px);
+          height: auto;
+        }
+        .cat-banner-overlay {
+          background: linear-gradient(to right, rgba(15,8,40,0.65) 0%, rgba(15,8,40,0.15) 60%, transparent 100%);
+        }
+        @media (max-width: 640px) {
+          .cat-banner { min-height: 520px !important; }
+          .cat-banner-text { padding: 24px 20px 22px 20px !important; max-width: 100% !important; }
+          /* darker from the bottom so text stays readable over the busy image */
+          .cat-banner-overlay {
+            background: linear-gradient(to top, rgba(15,8,40,0.85) 0%, rgba(15,8,40,0.55) 55%, rgba(15,8,40,0.15) 100%);
+          }
+        }
+      `}</style>
+
       <CustomCursor />
       <ElegantNavbar />
       <FlowingMenu />
@@ -183,16 +201,33 @@ export default function CollectionsPage() {
                     {/* Banner image */}
                     {catImg ? (
                       <>
-                        <div style={{ position: 'relative', width: '100%', borderRadius: 16, overflow: 'hidden', marginBottom: 20, aspectRatio: '16/5', background: '#f0edf6' }}>
-                          <img src={catImg} alt={catDoc?.image?.alt || category}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(15,8,40,0.65) 0%, rgba(15,8,40,0.15) 60%, transparent 100%)' }} />
-                          <div style={{ position: 'absolute', left: 36, bottom: 28, right: '40%' }}>
-                            <h2 className={cormorant.className} style={{ fontSize: 'clamp(26px, 3.5vw, 44px)', fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+                        <div
+                          className="cat-banner"
+                          style={{
+                            position: 'relative',
+                            width: '100%',
+                            borderRadius: 16,
+                            overflow: 'hidden',
+                            marginBottom: 20,
+                            background: '#f0edf6',
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                          }}
+                        >
+                          <img
+                            src={catImg}
+                            alt={catDoc?.image?.alt || category}
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                          <div className="cat-banner-overlay" style={{ position: 'absolute', inset: 0 }} />
+
+                          {/* Text is now in normal flow, so the banner grows with the content */}
+                          <div className="cat-banner-text" style={{ position: 'relative', boxSizing: 'border-box', width: '100%', minWidth: 0, padding: '28px 24px 24px 36px', maxWidth: 'min(100%, 560px)' }}>
+                            <h2 className={cormorant.className} style={{ fontSize: 'clamp(26px, 3.5vw, 44px)', fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.1, textShadow: '0 2px 12px rgba(0,0,0,0.3)', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                               {category}
                             </h2>
                             {catDesc && (
-                              <p className={jost.className} style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.82)', margin: 0, lineHeight: 1.7, maxWidth: 420 }}>
+                              <p className={jost.className} style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.9)', margin: 0, lineHeight: 1.7, overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                                 {catDesc}
                               </p>
                             )}
