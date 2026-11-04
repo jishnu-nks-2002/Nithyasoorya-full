@@ -21,6 +21,7 @@ interface FooterProps {
   tagline?: string;
   description?: string;
   logoSrc?: string;           // path to your logo image
+  logoSubtitle?: string;      // small text under the brand name next to the logo
   // Fallback links — only used if the backend cannot be reached
   nithyasoooriLinks?: FooterLink[];
   enjomLinks?: FooterLink[];
@@ -35,6 +36,7 @@ interface FooterProps {
     youtube?: string;
     twitter?: string;
   };
+  instagramLinks?: { handle: string; label: string; href: string }[];
   email?: string;
   phone?: string;
   address?: string;
@@ -197,40 +199,82 @@ function useFooterData(): FooterData {
   return data;
 }
 
-// ─── Logo ─────────────────────────────────────────────────────────────────────
-const FooterLogo: React.FC<{ src: string; brandName: string }> = ({ src, brandName }) => {
+// ─── Logo (crystal icon with shine + brand name + subtitle) ───────────────────
+const FooterLogo: React.FC<{ src: string; brandName: string; subtitle: string }> = ({ src, brandName, subtitle }) => {
   const [imgError, setImgError] = useState(false);
 
-  if (imgError) {
-    // Fallback: text wordmark if image path is wrong or missing
-    return (
-      <h2 style={{
+  const LOGO_H = 64; // adjust to taste
+
+  const textBlock = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <span style={{
         fontFamily: "'Playfair Display', Georgia, serif",
-        fontSize: 'clamp(26px, 3vw, 34px)',
-        fontWeight: 800, color: '#f5f0ff',
-        letterSpacing: '-0.02em', margin: '0 0 20px',
+        fontSize: 'clamp(22px, 2.4vw, 28px)',
+        fontWeight: 500,
+        color: '#f5f0ff',
+        letterSpacing: '0.28em',
         lineHeight: 1,
-      }}>
-        {brandName}
-      </h2>
-    );
-  }
+        textTransform: 'uppercase',
+      }}>{brandName}</span>
+      <span style={{
+        fontFamily: "'Inter', 'Crimson Text', sans-serif",
+        fontSize: '10px',
+        fontWeight: 500,
+        color: '#a78bda',
+        letterSpacing: '0.3em',
+        lineHeight: 1,
+        textTransform: 'uppercase',
+      }}>{subtitle}</span>
+    </div>
+  );
 
   return (
-    <img
-      src={src}
-      alt={`${brandName} logo`}
-      onError={() => setImgError(true)}
-      style={{
-        height: 56,              // adjust to taste — 48–72px works well in footers
-        width: 'auto',
-        objectFit: 'contain',
-        display: 'block',
-        marginBottom: '20px',
-        // If your logo is dark and needs to appear light on this dark footer, uncomment:
-        // filter: 'brightness(0) invert(1)',
-      }}
-    />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px' }}>
+      {!imgError && (
+        <div
+          className="ft-logo-wrap"
+          style={{
+            position: 'relative',
+            display: 'inline-block',
+            lineHeight: 0,
+            height: LOGO_H,
+            flexShrink: 0,
+          }}
+        >
+          <img
+            src={src}
+            alt={`${brandName} logo`}
+            onError={() => setImgError(true)}
+            className="ft-logo-img"
+            style={{
+              height: LOGO_H,
+              width: 'auto',
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
+          {/* Shine sweep — masked to the logo's own shape so only the crystal lines glow */}
+          <span
+            aria-hidden="true"
+            className="ft-logo-shine"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              WebkitMaskImage: `url(${src})`,
+              maskImage: `url(${src})`,
+              WebkitMaskSize: 'contain',
+              maskSize: 'contain',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center',
+              maskPosition: 'center',
+            }}
+          />
+        </div>
+      )}
+      {textBlock}
+    </div>
   );
 };
 
@@ -309,6 +353,47 @@ const SocialBtn: React.FC<{ href: string; label: string; children: React.ReactNo
       }}
     >
       {children}
+    </a>
+  );
+};
+
+// ─── Instagram profile link (icon + @handle + label) ──────────────────────────
+const InstagramProfileLink: React.FC<{ href: string; handle: string; label: string }> = ({ href, handle, label }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${label} on Instagram`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        textDecoration: 'none',
+        color: hovered ? '#c4a8dc' : 'rgba(255,255,255,0.55)',
+        transition: 'color 0.22s ease',
+      }}
+    >
+      <span style={{
+        width: '30px', height: '30px', borderRadius: '50%',
+        border: `1.5px solid ${hovered ? '#7B4BA0' : 'rgba(255,255,255,0.15)'}`,
+        background: hovered ? '#7B4BA0' : 'transparent',
+        color: hovered ? '#fff' : 'inherit',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        transition: 'all 0.25s ease',
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+          <circle cx="12" cy="12" r="4"/>
+          <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+        <span style={{ fontFamily: "'Crimson Text', Georgia, serif", fontSize: '15px', letterSpacing: '0.3px' }}>{handle}</span>
+        <span style={{ fontFamily: "'Crimson Text', Georgia, serif", fontSize: '12px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.5px' }}>{label}</span>
+      </span>
     </a>
   );
 };
@@ -416,9 +501,8 @@ const ColumnTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // ─── Footer Component ─────────────────────────────────────────────────────────
 const Footer: React.FC<FooterProps> = ({
   brandName = 'EMPAVAI',
-  tagline = 'Museum Exhibition 2024',
-  description = 'A sanctuary for those who believe beauty still has something urgent to say. Curating the finest intersection of ancient traditions and contemporary vision.',
-  logoSrc = '/logo-main.png', // swap with your actual logo path e.g. '/logo.svg'
+  logoSrc = '/logo-main-white.png', // the white crystal logo — swap with your actual path e.g. '/logo.png'
+  logoSubtitle = 'Art & Adornments',
 
   // ── Fallbacks (used only when the API is unreachable) ──
   nithyasoooriLinks = [
@@ -441,10 +525,14 @@ const Footer: React.FC<FooterProps> = ({
     { label: 'Contact', href: '/contact' },
   ],
   socialLinks = {
-    instagram: 'https://www.instagram.com/nithyasoori?srtk=MXg1dGlqZm1jOXhtcQ==',
     whatsapp:  'https://wa.me/971507593631',
     amazon:    'https://www.amazon.ae/s?me=A3KLS7FUS32BB2&marketplaceID=A2VIGQ35RCS4UG',
   },
+  instagramLinks = [
+    { handle: '@empavai',       label: 'Empavai',     href: 'https://www.instagram.com/empavai?exln=MWd4em1uejJwbnM2cA==' },
+    { handle: '@enjem_empavai', label: 'Enjem',       href: 'https://www.instagram.com/enjem_empavai?vrfl=MWpjeWo2MG0wY25lMw==' },
+    { handle: '@nithyasoori',   label: 'Nithyasoori', href: 'https://www.instagram.com/nithyasoori?srtk=MXg1dGlqZm1jOXhtcQ==' },
+  ],
   email    = 'hello@empavai.com',
   phone    = '+91 98765 43210',
   address  = 'Gallery District, Chennai, India',
@@ -486,6 +574,36 @@ const Footer: React.FC<FooterProps> = ({
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,800;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
         @keyframes ft-pulse { 0%,100%{opacity:0.04} 50%{opacity:0.07} }
+
+        /* ── Logo shine + glow ── */
+        @keyframes ft-shine {
+          0%   { background-position: 160% 0; }
+          55%  { background-position: -60% 0; }
+          100% { background-position: -60% 0; }
+        }
+        @keyframes ft-logo-glow {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(155,111,224,0.25)); }
+          50%      { filter: drop-shadow(0 0 10px rgba(192,132,252,0.75)); }
+        }
+        .ft-logo-img {
+          animation: ft-logo-glow 3.4s ease-in-out infinite;
+        }
+        .ft-logo-shine {
+          background: linear-gradient(
+            115deg,
+            transparent 30%,
+            rgba(167,111,255,0.95) 45%,
+            rgba(255,255,255,1) 50%,
+            rgba(167,111,255,0.95) 55%,
+            transparent 70%
+          );
+          background-size: 250% 100%;
+          background-repeat: no-repeat;
+          animation: ft-shine 3.4s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ft-logo-img, .ft-logo-shine { animation: none; }
+        }
 
         /* Desktop: brand | collections (wide) | crystal wisdom | sacred spaces */
         .ft-grid {
@@ -538,29 +656,8 @@ const Footer: React.FC<FooterProps> = ({
           {/* ── Brand column ─────────────────────────────────────────────── */}
           <div className="ft-col-brand">
 
-            {/* Tagline above logo */}
-            <p style={{
-              fontFamily: "'Crimson Text', Georgia, serif",
-              fontSize: '10px', letterSpacing: '5px',
-              textTransform: 'uppercase', color: '#7B4BA0',
-              margin: '0 0 14px', opacity: 0.85,
-            }}>{tagline}</p>
-
-            {/* ── Logo image ── */}
-            <FooterLogo src={logoSrc} brandName={brandName} />
-
-            {/* Ornamental divider */}
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-              <div style={{ width:'32px', height:'1px', background:'linear-gradient(to right, #7B4BA0, transparent)' }} />
-              <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#7B4BA0', opacity:0.6 }} />
-            </div>
-
-            <p style={{
-              fontFamily: "'Crimson Text', Georgia, serif",
-              fontSize: '15px', fontStyle: 'italic',
-              color: 'rgba(255,255,255,0.45)', lineHeight: 1.75,
-              margin: '0 0 28px', maxWidth: '300px',
-            }}>{description}</p>
+            {/* ── Logo (shining crystal) + EMPAVAI / ART & ADORNMENTS ── */}
+            <FooterLogo src={logoSrc} brandName={brandName} subtitle={logoSubtitle} />
 
             {/* Contact details */}
             <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'32px' }}>
@@ -593,6 +690,18 @@ const Footer: React.FC<FooterProps> = ({
                 {address}
               </p>
             </div>
+
+            {/* Instagram profiles */}
+            {instagramLinks.length > 0 && (
+              <div style={{ marginBottom: '32px' }}>
+                <BrandHeading color="#c084fc">Follow Us on Instagram</BrandHeading>
+                <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                  {instagramLinks.map(ig => (
+                    <InstagramProfileLink key={ig.href} href={ig.href} handle={ig.handle} label={ig.label} />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Social icons */}
             <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>

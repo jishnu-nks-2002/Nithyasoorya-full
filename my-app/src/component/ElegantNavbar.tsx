@@ -9,6 +9,7 @@ const cormorant = Cormorant_Garamond({ weight: ["300","400","500","600"], subset
 
 const API_BASE    = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const PLACEHOLDER = "/images/placeholder.jpeg";
+const LOGO_SRC    = "/logo-main.png";   // navbar logo (used for the image AND the shine mask)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Sanitise image URLs (strips smart-quotes, prepends API_BASE for relative paths)
@@ -137,7 +138,7 @@ const SACRED_LINKS = [
   { label: "Contact", sub: "Reach out",                href: "/contact"  },
 ];
 
-// ── Logo ──────────────────────────────────────────────────────────────────────
+// ── Logo (with shining animation) ─────────────────────────────────────────────
 const Logo = () => {
   const [imgError, setImgError] = useState(false);
   if (imgError) {
@@ -150,9 +151,27 @@ const Logo = () => {
     );
   }
   return (
-    <Image src="/logo-main.png" alt="Empavai logo" width={40} height={40}
-      onError={() => setImgError(true)}
-      style={{ objectFit: "contain", height: 40, width: "auto" }} />
+    <span
+      className="empavai-logo-wrap"
+      style={{ position: "relative", display: "inline-block", lineHeight: 0, height: 40, flexShrink: 0 }}
+    >
+      <Image src={LOGO_SRC} alt="Empavai logo" width={40} height={40}
+        className="empavai-logo-img"
+        onError={() => setImgError(true)}
+        style={{ objectFit: "contain", height: 40, width: "auto", display: "block" }} />
+      {/* Shine sweep — masked to the logo's own shape so only the crystal lines glint */}
+      <span
+        aria-hidden="true"
+        className="empavai-logo-shine"
+        style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          WebkitMaskImage: `url(${LOGO_SRC})`, maskImage: `url(${LOGO_SRC})`,
+          WebkitMaskSize: "contain",           maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",       maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",        maskPosition: "center",
+        }}
+      />
+    </span>
   );
 };
 
@@ -630,6 +649,36 @@ export default function ElegantNavbar() {
   return (
     <>
       <style>{`
+        /* ── Logo shine + glow ── */
+        @keyframes empavai-shine {
+          0%   { background-position: 160% 0; }
+          55%  { background-position: -60% 0; }
+          100% { background-position: -60% 0; }
+        }
+        @keyframes empavai-logo-glow {
+          0%, 100% { filter: drop-shadow(0 0 0 rgba(155,111,224,0)); }
+          50%      { filter: drop-shadow(0 0 6px rgba(155,111,224,0.55)); }
+        }
+        .empavai-logo-img {
+          animation: empavai-logo-glow 3.4s ease-in-out infinite;
+        }
+        .empavai-logo-shine {
+          background: linear-gradient(
+            115deg,
+            transparent 30%,
+            rgba(255,255,255,0.55) 44%,
+            rgba(255,255,255,1) 50%,
+            rgba(255,255,255,0.55) 56%,
+            transparent 70%
+          );
+          background-size: 250% 100%;
+          background-repeat: no-repeat;
+          animation: empavai-shine 3.4s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .empavai-logo-img, .empavai-logo-shine { animation: none; }
+        }
+
         .empavai-navlink {
           font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #4a3966;
           text-decoration: none; padding: 6px 2px; position: relative;
