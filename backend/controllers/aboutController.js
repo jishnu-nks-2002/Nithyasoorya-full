@@ -1,4 +1,4 @@
-// aboutController.js
+// controllers/aboutController.js
 const AboutPage = require("../models/About");
 const path      = require("path");
 const fs        = require("fs");
@@ -20,6 +20,17 @@ const deleteOldFile = (oldUrl) => {
   });
 };
 
+// Accepts a real array or a JSON string (FormData) and always returns a clean string array
+const toStringArray = (val) => {
+  let arr = val;
+  if (typeof val === "string") {
+    try { arr = JSON.parse(val); } catch { arr = []; }
+  }
+  return Array.isArray(arr)
+    ? arr.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+};
+
 // GET /api/about
 exports.getAboutPage = async (req, res) => {
   try {
@@ -30,13 +41,12 @@ exports.getAboutPage = async (req, res) => {
   }
 };
 
-// PUT /api/about/hero  — now accepts FormData (supports video file upload)
+// PUT /api/about/hero  — FormData (supports video file upload)
 exports.updateHero = async (req, res) => {
   try {
     const doc = await getOrCreate();
     const { videoSrc, carouselWords, marqueeItems } = req.body;
 
-    // Video file uploaded via form-data
     if (req.files?.video?.[0]) {
       deleteOldFile(doc.hero.videoSrc);
       doc.hero.videoSrc = publicUrl(req.files.video[0].filename, "about");
@@ -90,20 +100,23 @@ exports.updateAboutSection = async (req, res) => {
 exports.updateArtist = async (req, res) => {
   try {
     const doc = await getOrCreate();
-    ["name","title","specialty","bio","quote","tag","studioInfo"].forEach((f) => {
+
+    ["heading","name","intro","quote","quoteAuthor","studioInfo"].forEach((f) => {
       if (req.body[f] !== undefined) doc.artist[f] = req.body[f];
     });
-    ["worksCount","yearsActive","collectors"].forEach((f) => {
-      if (req.body[f] !== undefined) doc.artist[f] = Number(req.body[f]);
-    });
+
+    if (req.body.roles !== undefined)      doc.artist.roles      = toStringArray(req.body.roles);
+    if (req.body.paragraphs !== undefined) doc.artist.paragraphs = toStringArray(req.body.paragraphs);
+
     if (req.files) {
-      ["portraitImg","featured1","featured2","featured3"].forEach((field) => {
+      ["portraitImg","awardImg"].forEach((field) => {
         if (req.files[field]?.[0]) {
           deleteOldFile(doc.artist[field]);
           doc.artist[field] = publicUrl(req.files[field][0].filename);
         }
       });
     }
+
     doc.markModified("artist");
     await doc.save();
     res.json({ success: true, data: doc.artist });

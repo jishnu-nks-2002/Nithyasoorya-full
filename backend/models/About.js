@@ -16,29 +16,32 @@ const heroSchema = new mongoose.Schema({
 const aboutSchema = new mongoose.Schema({
   eyebrow:      { type: String, default: "The Original Source" },
   headline:     { type: String, default: "Where Artistry Meets the Soul" },
-  headlineEm:   { type: String, default: "the Soul" },      // italic portion
+  headlineEm:   { type: String, default: "the Soul" },
   bodyLeft:     { type: String, default: "" },
   bodyRight:    { type: String, default: "" },
   imageTop:     { type: String, default: "/images/p-6.jpeg" },
   imageBottom:  { type: String, default: "/images/p-4.jpeg" },
 }, { _id: false });
 
-// ── Artist Section ────────────────────────────────────────────────────────────
+// ── Artist Section (redesigned: "About the Artist") ───────────────────────────
 const artistSchema = new mongoose.Schema({
-  name:       { type: String, default: "Kavya Nair" },
-  title:      { type: String, default: "Crystal & Resin Sculptor" },
-  specialty:  { type: String, default: "Amethyst · Fluid Resin · Sacred Geometry" },
-  bio:        { type: String, default: "" },
-  worksCount: { type: Number, default: 34 },
-  yearsActive:{ type: Number, default: 8 },
-  collectors: { type: Number, default: 412 },
-  quote:      { type: String, default: "" },
-  tag:        { type: String, default: "Lead Artist" },
-  portraitImg:{ type: String, default: "/images/person/img-1.jpeg" },
-  featured1:  { type: String, default: "/images/p-1.jpeg" },
-  featured2:  { type: String, default: "/images/p-2.jpeg" },
-  featured3:  { type: String, default: "/images/p-3.jpeg" },
-  studioInfo: { type: String, default: "Empavai Studio · Kerala, India · Est. 2016" },
+  heading:     { type: String, default: "About the Artist" },
+  name:        { type: String, default: "Nithya" },
+  roles:       { type: [String], default: ["Founder", "Jewellery Designer", "Gemmologist"] },
+  intro:       { type: String, default: "I'm the artist and creator behind Empavai." },
+  paragraphs:  {
+    type: [String],
+    default: [
+      "For over twenty years, jewellery design has been my creative language—a journey recognized by honours including the World Gold Council Jewellery Awards in the MENA region.",
+      "Empavai marks a new chapter in that journey, allowing my imagination to take shape as crystal art decor that brings beauty and meaning to every space.",
+      "As a creator, I let my materials themselves guide the design. Inspired by forests, flowing water, ancient symbolism and the quiet energy of natural materials, every piece is handcrafted with close attention to texture, form and intention.",
+    ],
+  },
+  quote:       { type: String, default: "Inspired by nature.\nCrafted with meaning.\nTimeless by design." },
+  quoteAuthor: { type: String, default: "Nithya" },
+  portraitImg: { type: String, default: "/images/person/img-1.jpeg" },
+  awardImg:    { type: String, default: "/images/p-1.jpeg" },
+  studioInfo:  { type: String, default: "" },
 }, { _id: false });
 
 // ── Root Document ─────────────────────────────────────────────────────────────

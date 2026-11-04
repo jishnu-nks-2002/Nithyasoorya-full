@@ -1,232 +1,156 @@
 'use client';
 
-import { useRef, useState, useEffect } from "react";
-import type { AboutPageData } from "../../api/useAboutPage";
 import Image from "next/image";
-import Link from "next/link";
-import { Bebas_Neue, Lato, Cormorant_Garamond } from "next/font/google";
+import { Lato, Cormorant_Garamond } from "next/font/google";
+import type { AboutPageData } from "../../api/useAboutPage";
 
-const bebasNeue = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap" });
 const lato = Lato({ weight: ["300", "400"], subsets: ["latin"], display: "swap" });
 const cormorant = Cormorant_Garamond({
-  weight: ["300","400","600"], style: ["normal","italic"], subsets: ["latin"], display: "swap",
+  weight: ["300", "400", "600"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export default function ArtistSection({ data }: { data?: AboutPageData["artist"] | null }) {
-  const rootRef = useRef<HTMLElement>(null);
-  const [images, setImages] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (data) setImages([data.portraitImg, data.featured1, data.featured2, data.featured3]);
-  }, [data]);
-
   if (!data) return null;
 
-  const mainImg = images[0] || data.portraitImg;
-  const thumbs = images.length ? images.slice(1) : [data.featured1, data.featured2, data.featured3];
-  const isPortrait = mainImg === data.portraitImg;
-
-  const swapImage = (thumbIndex: number) => {
-    setImages(prev => {
-      const next = [...prev];
-      [next[0], next[thumbIndex + 1]] = [next[thumbIndex + 1], next[0]];
-      return next;
-    });
-  };
+  const roles = (data.roles ?? []).filter(Boolean);
+  const paragraphs = (data.paragraphs ?? []).filter(Boolean);
+  const quoteLines = (data.quote ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
 
   return (
     <>
       <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --deep: #0d0516; --purple: #6b3fa0; --purple-light: #c084fc;
-          --cream: rgba(238,230,255,0.92); --muted: rgba(190,165,230,0.5);
-          --border: rgba(180,130,255,0.1);
-        }
-        .as-root { background: var(--deep); color: var(--cream); position: relative; overflow: hidden; }
-        .as-glow1 { position: absolute; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(107,63,160,0.16) 0%, transparent 70%); top: -180px; right: -180px; pointer-events: none; z-index: 0; }
-        .as-glow2 { position: absolute; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(123,47,255,0.09) 0%, transparent 70%); bottom: 0; left: -120px; pointer-events: none; z-index: 0; }
-        .as-grain { position: absolute; inset: -50%; width: 200%; height: 200%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.03; pointer-events: none; z-index: 0; }
-        .as-inner { position: relative; z-index: 2; padding: 88px 60px; max-width: 1200px; margin: 0 auto; }
-        .as-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 48px; gap: 24px; }
-        .as-eyebrow { font-size: 9px; letter-spacing: 0.36em; text-transform: uppercase; color: rgba(192,132,252,0.55); margin-bottom: 12px; font-weight: 300; }
-        .as-heading { font-size: clamp(34px,4.5vw,54px); font-weight: 400; line-height: 1.05; color: var(--cream); letter-spacing: 0.02em; }
-        .as-heading em { font-style: italic; color: var(--purple-light); font-weight: 300; }
-        .as-header-sub { max-width: 280px; text-align: right; font-size: 11.5px; font-weight: 300; line-height: 1.85; color: var(--muted); letter-spacing: 0.03em; }
-        .as-divider { width: 100%; height: 1px; background: var(--border); margin-bottom: 56px; }
-        .as-grid { display: grid; grid-template-columns: 320px 1fr; gap: 64px; align-items: start; }
-        .as-left { display: flex; flex-direction: column; gap: 14px; }
-        .as-portrait { position: relative; overflow: hidden; border-radius: 5px; aspect-ratio: 3/4; border: 1px solid var(--border); }
-        .as-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(0.72) brightness(0.82); transition: filter 0.6s ease, transform 0.6s ease; }
-        .as-portrait:hover img { filter: saturate(0.88) brightness(0.9); transform: scale(1.02); }
-        .as-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 55%, rgba(10,3,22,0.75) 100%); }
-        .as-main-img { animation: as-fade 0.7s ease; }
-        @keyframes as-fade { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
-        .as-portrait-name { position: absolute; bottom: 18px; left: 18px; z-index: 2; }
-        .as-portrait-name strong { display: block; font-size: 20px; font-weight: 400; color: var(--cream); letter-spacing: 0.05em; }
-        .as-portrait-name span { font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(192,132,252,0.6); font-weight: 300; }
-        .as-works-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-        .as-work-thumb { position: relative; overflow: hidden; border-radius: 3px; aspect-ratio: 1/1; border: 1px solid var(--border); cursor: pointer; }
-        .as-work-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(0.6) brightness(0.7); transition: filter 0.4s ease, transform 0.4s ease; }
-        .as-work-thumb:hover img { filter: saturate(0.85) brightness(0.9); transform: scale(1.06); }
-        .as-work-thumb::after { content: ''; position: absolute; inset: 0; background: rgba(60,10,100,0.2); }
-        .as-work-label { font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(192,132,252,0.4); font-weight: 300; }
-        .as-right { display: flex; flex-direction: column; gap: 32px; }
-        .as-name { font-size: clamp(40px,5.5vw,68px); font-weight: 400; line-height: 0.95; color: var(--cream); letter-spacing: 0.02em; }
-        .as-name-title { font-style: italic; font-weight: 300; font-size: clamp(16px,2vw,22px); color: var(--purple-light); letter-spacing: 0.06em; margin-top: 8px; display: block; }
-        .as-specialty { font-size: 9px; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(192,132,252,0.4); font-weight: 300; margin-top: 16px; }
-        .as-rule { width: 48px; height: 1px; background: linear-gradient(to right, var(--purple-light), transparent); opacity: 0.4; }
-        .as-bio { font-size: clamp(15px,1.5vw,18px); font-weight: 300; font-style: italic; line-height: 1.9; color: rgba(210,195,240,0.62); letter-spacing: 0.02em; padding-left: 22px; border-left: 1px solid rgba(192,132,252,0.18); }
-        .as-stats { display: flex; gap: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        .as-stat { flex: 1; padding: 22px 0; border-right: 1px solid var(--border); }
-        .as-stat:last-child { border-right: none; }
-        .as-stat-val { font-size: 44px; letter-spacing: 0.06em; color: var(--cream); line-height: 1; }
-        .as-stat-val sup { font-size: 18px; color: var(--purple-light); vertical-align: super; }
-        .as-stat-label { font-size: 8.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-top: 5px; font-weight: 300; }
-        .as-quote { position: relative; padding: 28px 28px 28px 32px; background: rgba(107,63,160,0.08); border-radius: 3px; border: 1px solid rgba(192,132,252,0.1); }
-        .as-quote::before { content: '"'; position: absolute; top: -8px; left: 18px; font-size: 80px; line-height: 1; color: rgba(192,132,252,0.15); pointer-events: none; }
-        .as-quote p { font-size: clamp(16px,1.8vw,20px); font-style: italic; font-weight: 300; line-height: 1.75; color: rgba(220,205,245,0.6); letter-spacing: 0.03em; }
-        .as-quote cite { display: block; margin-top: 12px; font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(192,132,252,0.4); font-style: normal; }
-        .as-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-        .as-btn-fill { display: inline-flex; align-items: center; gap: 10px; padding: 14px 30px; font-size: 9px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: var(--purple-light); border: 1px solid rgba(192,132,252,0.3); border-radius: 2px; cursor: pointer; text-decoration: none; background: linear-gradient(to right, var(--purple) 50%, transparent 50%); background-size: 200% 100%; background-position: right center; transition: background-position 0.45s cubic-bezier(0.4,0,0.2,1), color 0.4s ease, border-color 0.4s ease; }
-        .as-btn-fill:hover { background-position: left center; color: #fff; border-color: var(--purple); }
-        .as-btn-ghost { display: inline-flex; align-items: center; gap: 10px; padding: 14px 20px; font-size: 9px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(190,165,230,0.45); background: none; border: none; border-bottom: 1px solid rgba(190,165,230,0.18); cursor: pointer; text-decoration: none; transition: color 0.3s ease, border-color 0.3s ease; }
-        .as-btn-ghost:hover { color: var(--purple-light); border-color: var(--purple-light); }
-        .as-strip { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-        .as-strip-text { font-size: 12px; font-style: italic; color: rgba(180,150,230,0.3); letter-spacing: 0.04em; }
-        .as-strip-right { display: flex; align-items: center; gap: 20px; }
-        .as-strip-num { font-size: 13px; letter-spacing: 0.18em; color: rgba(192,132,252,0.25); }
+        .as-root { --deep:#0d0516; --purple:#6b3fa0; --purple-light:#c084fc;
+          --cream:rgba(238,230,255,0.92); --soft:rgba(210,195,240,0.78); --border:rgba(180,130,255,0.14);
+          background: var(--deep); color: var(--cream); position: relative; overflow: hidden; }
+        .as-root *, .as-root *::before, .as-root *::after { box-sizing: border-box; }
+        .as-glow1 { position:absolute; width:700px; height:700px; border-radius:50%; top:-180px; right:-180px;
+          background: radial-gradient(circle, rgba(107,63,160,0.18) 0%, transparent 70%); pointer-events:none; }
+        .as-glow2 { position:absolute; width:500px; height:500px; border-radius:50%; bottom:-120px; left:-120px;
+          background: radial-gradient(circle, rgba(123,47,255,0.10) 0%, transparent 70%); pointer-events:none; }
+
+        .as-inner { position:relative; z-index:2; max-width:1200px; margin:0 auto; padding:88px 60px; }
+        .as-grid { display:grid; grid-template-columns: 1fr 1fr; column-gap:56px; row-gap:56px;
+          grid-template-areas: "text portrait" "award quote"; align-items:start; }
+
+        /* text block */
+        .as-text { grid-area:text; padding-top:8px; }
+        .as-heading { font-size:clamp(38px,5vw,64px); font-weight:600; line-height:1.05; color:var(--cream); letter-spacing:0.01em; }
+        .as-roles { margin-top:22px; font-size:12px; font-weight:400; letter-spacing:0.18em; text-transform:uppercase; color:rgba(220,205,250,0.8); }
+        .as-roles .sep { margin:0 10px; color:rgba(192,132,252,0.45); }
+        .as-rule { width:76px; height:2px; margin:22px 0 30px; background:linear-gradient(to right, var(--purple-light), rgba(192,132,252,0.2)); }
+        .as-intro { font-size:17px; font-weight:400; line-height:1.7; color:var(--cream); margin-bottom:18px; }
+        .as-para { font-size:16px; font-weight:300; line-height:1.75; color:var(--soft); margin-bottom:18px; max-width:520px; }
+
+        /* portrait */
+        .as-portrait { grid-area:portrait; position:relative; width:100%; aspect-ratio: 4/5; overflow:hidden;
+          border-radius:6px; border:1px solid var(--border); }
+        .as-portrait::after { content:''; position:absolute; inset:0; pointer-events:none;
+          background: linear-gradient(to bottom, transparent 70%, rgba(13,5,22,0.45) 100%); }
+
+        /* award */
+        .as-award-wrap { grid-area:award; display:flex; justify-content:center; }
+        .as-award { position:relative; width:100%; max-width:400px; aspect-ratio:1/1; overflow:hidden;
+          border-radius:4px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.45); }
+
+        /* quote */
+        .as-quote-wrap { grid-area:quote; display:flex; align-self:center; gap:34px; align-items:stretch; }
+        .as-quote-line { width:2px; flex-shrink:0; background:linear-gradient(to bottom, transparent, var(--purple-light), transparent); opacity:0.7; }
+        .as-quote-body { display:flex; flex-direction:column; justify-content:center; }
+        .as-quote-text { font-size:clamp(24px,2.8vw,34px); font-style:italic; font-weight:300; line-height:1.5; color:var(--cream); }
+        .as-quote-author { font-style:normal; font-weight:400; font-size:0.8em; color:var(--purple-light); margin-left:8px; }
+        .as-quote-rule { width:84px; height:2px; margin-top:26px; background:linear-gradient(to right, var(--purple-light), transparent); }
+
+        .as-strip { margin-top:56px; padding-top:24px; border-top:1px solid var(--border);
+          font-size:13px; font-style:italic; color:rgba(180,150,230,0.4); letter-spacing:0.04em; }
+
         @media (max-width: 900px) {
-          .as-inner { padding: 56px 28px; }
-          .as-grid { grid-template-columns: 1fr; gap: 40px; }
-          /* keep the portrait (3/4) shape on mobile; capped width so it stays a sensible size on tablets */
-          .as-left { width: 100%; max-width: 420px; margin: 0 auto; }
-          .as-header { flex-direction: column; align-items: flex-start; }
-          .as-header-sub { text-align: left; max-width: 100%; }
-        }
-        @media (max-width: 520px) {
-          .as-stats { flex-wrap: wrap; }
-          .as-stat { flex: 0 0 50%; }
+          .as-inner { padding:56px 24px; }
+          .as-grid { grid-template-columns:1fr; row-gap:40px;
+            grid-template-areas: "text" "portrait" "award" "quote"; }
+          .as-portrait { max-width:520px; margin:0 auto; }
+          .as-quote-wrap { gap:20px; }
         }
       `}</style>
 
-      <section className={`as-root ${lato.className}`} ref={rootRef}>
-        <div className="as-glow1" /><div className="as-glow2" /><div className="as-grain" />
+      <section className={`as-root ${lato.className}`}>
+        <div className="as-glow1" />
+        <div className="as-glow2" />
 
         <div className="as-inner">
-          <div className="as-header">
-            <div>
-              <p className="as-eyebrow">The Maker</p>
-              <h2 className={`as-heading ${cormorant.className}`}>
-                Artist in<br /><em>Residence</em>
-              </h2>
-            </div>
-            <p className="as-header-sub">
-              A singular voice working at the edge of material possibility — rooted in crystal, resin, and the sacred geometry of ancient stone.
-            </p>
-          </div>
-
-          <div className="as-divider" />
-
           <div className="as-grid">
-            <div className="as-left">
-              <div className="as-portrait">
-                <Image
-                  key={mainImg}
-                  className="as-main-img"
-                  src={mainImg}
-                  alt={data.name}
-                  fill
-                  sizes="(max-width: 900px) 420px, 320px"
-                  style={{ objectFit: "cover", filter: "saturate(0.72) brightness(0.82)" }}
-                  unoptimized
-                />
-                {isPortrait && (
-                  <div className="as-portrait-name">
-                    <strong className={cormorant.className}>{data.name}</strong>
-                    <span>{data.title}</span>
-                  </div>
-                )}
-              </div>
+            <div className="as-text">
+              <h2 className={`as-heading ${cormorant.className}`}>{data.heading}</h2>
 
-              <p className="as-work-label">Selected Works</p>
-              <div className="as-works-row">
-                {thumbs.map((src, i) => (
-                  <div
-                    key={src || i}
-                    className="as-work-thumb"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => swapImage(i)}
-                    onKeyDown={e => (e.key === "Enter" || e.key === " ") && swapImage(i)}
-                  >
-                    <Image
-                      src={src}
-                      alt={`Work ${i + 1}`}
-                      fill
-                      sizes="100px"
-                      style={{ objectFit: "cover", filter: "saturate(0.6) brightness(0.7)" }}
-                      unoptimized
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="as-right">
-              <div>
-                <h3 className={`as-name ${cormorant.className}`}>{data.name}</h3>
-                <span className={`as-name-title ${cormorant.className}`}>{data.title}</span>
-                <p className="as-specialty">{data.specialty}</p>
-              </div>
+              {roles.length > 0 && (
+                <p className="as-roles">
+                  {roles.map((r, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="sep">|</span>}
+                      {r}
+                    </span>
+                  ))}
+                </p>
+              )}
 
               <div className="as-rule" />
 
-              <p className={`as-bio ${cormorant.className}`}>{data.bio}</p>
+              {data.intro && <p className="as-intro">{data.intro}</p>}
+              {paragraphs.map((p, i) => (
+                <p key={i} className="as-para">{p}</p>
+              ))}
+            </div>
 
-              <div className="as-stats">
-                <div className="as-stat">
-                  <div className={`as-stat-val ${bebasNeue.className}`}>{data.worksCount}<sup>+</sup></div>
-                  <div className="as-stat-label">Works Created</div>
-                </div>
-                <div className="as-stat">
-                  <div className={`as-stat-val ${bebasNeue.className}`}>{data.yearsActive}<sup>yr</sup></div>
-                  <div className="as-stat-label">Years Active</div>
-                </div>
-                <div className="as-stat">
-                  <div className={`as-stat-val ${bebasNeue.className}`}>{data.collectors}<sup>+</sup></div>
-                  <div className="as-stat-label">Collectors</div>
+            {data.portraitImg && (
+              <div className="as-portrait">
+                <Image
+                  src={data.portraitImg}
+                  alt={data.name || "Artist portrait"}
+                  fill
+                  sizes="(max-width: 900px) 520px, 600px"
+                  style={{ objectFit: "cover", objectPosition: "top center" }}
+                  unoptimized
+                />
+              </div>
+            )}
+
+            {data.awardImg && (
+              <div className="as-award-wrap">
+                <div className="as-award">
+                  <Image
+                    src={data.awardImg}
+                    alt="Award and reference books"
+                    fill
+                    sizes="400px"
+                    style={{ objectFit: "cover" }}
+                    unoptimized
+                  />
                 </div>
               </div>
+            )}
 
-              <div className="as-quote">
-                <p className={cormorant.className}>{data.quote}</p>
-                <cite>— {data.name}</cite>
-              </div>
-
-              <div className="as-actions">
-                <Link href="/contact" className={`as-btn-fill ${lato.className}`}>
-                  Commission a Work
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                  </svg>
-                </Link>
-                <Link href="/collections" className={`as-btn-ghost ${lato.className}`}>
-                  View Full Portfolio
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                  </svg>
-                </Link>
+            <div className="as-quote-wrap">
+              <div className="as-quote-line" />
+              <div className="as-quote-body">
+                <p className={`as-quote-text ${cormorant.className}`}>
+                  {quoteLines.map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      {i === quoteLines.length - 1 && data.quoteAuthor && (
+                        <span className="as-quote-author">– {data.quoteAuthor}</span>
+                      )}
+                      {i < quoteLines.length - 1 && <br />}
+                    </span>
+                  ))}
+                </p>
+                <div className="as-quote-rule" />
               </div>
             </div>
           </div>
 
-          <div className="as-strip">
-            <span className={`as-strip-text ${cormorant.className}`}>{data.studioInfo}</span>
-            <div className="as-strip-right">
-              <span className={`as-strip-num ${bebasNeue.className}`}>01 / 01</span>
-            </div>
-          </div>
+          {data.studioInfo && <div className={`as-strip ${cormorant.className}`}>{data.studioInfo}</div>}
         </div>
       </section>
     </>

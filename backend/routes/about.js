@@ -29,16 +29,12 @@ const upload = multer({
   },
 });
 
-// Hero — now accepts an optional "video" field for video file upload
-const heroUpload = upload.fields([
-  { name: "video", maxCount: 1 },   // ← NEW: video file upload
-]);
+const heroUpload = upload.fields([{ name: "video", maxCount: 1 }]);
 
+// Artist section: portrait + award image only
 const artistUpload = upload.fields([
   { name: "portraitImg", maxCount: 1 },
-  { name: "featured1",   maxCount: 1 },
-  { name: "featured2",   maxCount: 1 },
-  { name: "featured3",   maxCount: 1 },
+  { name: "awardImg",    maxCount: 1 },
 ]);
 
 const aboutUpload = upload.fields([
@@ -47,7 +43,7 @@ const aboutUpload = upload.fields([
 ]);
 
 router.get("/",              ctrl.getAboutPage);
-router.put("/hero",          protect, heroUpload,   ctrl.updateHero);        // changed from upload.none()
+router.put("/hero",          protect, heroUpload,   ctrl.updateHero);
 router.put("/about-section", protect, aboutUpload,  ctrl.updateAboutSection);
 router.put("/artist",        protect, artistUpload, ctrl.updateArtist);
 

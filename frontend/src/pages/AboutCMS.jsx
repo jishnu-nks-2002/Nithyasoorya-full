@@ -319,22 +319,39 @@ const AboutEditor = ({ data, onSaved }) => {
 
 // ─── Artist Editor ────────────────────────────────────────────────────────────
 const ArtistEditor = ({ data, onSaved }) => {
-  const [form, setForm]     = useState(data);
+  const normalise = (d) => ({
+    ...d,
+    roles:      parseArray(d.roles),
+    paragraphs: parseArray(d.paragraphs),
+  });
+
+  const [form, setForm]     = useState(() => normalise(data));
   const [files, setFiles]   = useState({});
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setForm(data); setFiles({}); }, [data]);
+  useEffect(() => { setForm(normalise(data)); setFiles({}); }, [data]);
 
   const set     = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setFile = (name, file) => setFiles((f) => ({ ...f, [name]: file }));
+
+  // roles
+  const setRole    = (i, v) => set("roles", form.roles.map((r, idx) => (idx === i ? v : r)));
+  const addRole    = () => set("roles", [...form.roles, ""]);
+  const removeRole = (i) => set("roles", form.roles.filter((_, idx) => idx !== i));
+
+  // paragraphs
+  const setPara    = (i, v) => set("paragraphs", form.paragraphs.map((p, idx) => (idx === i ? v : p)));
+  const addPara    = () => set("paragraphs", [...form.paragraphs, ""]);
+  const removePara = (i) => set("paragraphs", form.paragraphs.filter((_, idx) => idx !== i));
 
   const save = async () => {
     setSaving(true);
     try {
       const fd = new FormData();
-      ["name","title","specialty","bio","quote","tag","studioInfo"].forEach((k) => fd.append(k, form[k] || ""));
-      ["worksCount","yearsActive","collectors"].forEach((k) => fd.append(k, String(form[k] ?? 0)));
-      ["portraitImg","featured1","featured2","featured3"].forEach((k) => { if (files[k]) fd.append(k, files[k]); });
+      ["heading","name","intro","quote","quoteAuthor","studioInfo"].forEach((k) => fd.append(k, form[k] || ""));
+      fd.append("roles",      JSON.stringify(form.roles.filter((r) => r.trim())));
+      fd.append("paragraphs", JSON.stringify(form.paragraphs.filter((p) => p.trim())));
+      ["portraitImg","awardImg"].forEach((k) => { if (files[k]) fd.append(k, files[k]); });
       await updateArtist(fd);
       toast("Artist section saved!");
       setFiles({});
@@ -350,46 +367,70 @@ const ArtistEditor = ({ data, onSaved }) => {
   return (
     <div className="section-card">
       <div className="section-header">
-        <div><h2 className="section-title">Artist Section</h2><p className="section-desc">Artist bio, stats, quote and portfolio images</p></div>
+        <div>
+          <h2 className="section-title">About the Artist</h2>
+          <p className="section-desc">Heading, roles, story, quote, portrait and award image</p>
+        </div>
         <button className="btn-save" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Artist"}</button>
       </div>
 
-      <div className="three-col">
+      <div className="two-col">
+        {/* ── Left: text ── */}
         <div>
-          <label className="field-label">Name</label>
-          <input className="field-input" value={form.name || ""} onChange={(e) => set("name", e.target.value)} />
-          <label className="field-label">Title / Role</label>
-          <input className="field-input" value={form.title || ""} onChange={(e) => set("title", e.target.value)} />
-          <label className="field-label">Specialty Line</label>
-          <input className="field-input" value={form.specialty || ""} onChange={(e) => set("specialty", e.target.value)} />
-          <label className="field-label">Tag Pill</label>
-          <input className="field-input" value={form.tag || ""} onChange={(e) => set("tag", e.target.value)} />
-          <label className="field-label">Studio Info (footer line)</label>
-          <input className="field-input" value={form.studioInfo || ""} onChange={(e) => set("studioInfo", e.target.value)} />
-        </div>
+          <label className="field-label">Heading</label>
+          <input className="field-input" value={form.heading || ""} onChange={(e) => set("heading", e.target.value)} placeholder="About the Artist" />
 
-        <div>
-          <label className="field-label">Stats</label>
-          <div className="stat-row">
-            <div><label className="field-label small">Works</label><input className="field-input" type="number" value={form.worksCount ?? 0} onChange={(e) => set("worksCount", e.target.value)} /></div>
-            <div><label className="field-label small">Years</label><input className="field-input" type="number" value={form.yearsActive ?? 0} onChange={(e) => set("yearsActive", e.target.value)} /></div>
-            <div><label className="field-label small">Collectors</label><input className="field-input" type="number" value={form.collectors ?? 0} onChange={(e) => set("collectors", e.target.value)} /></div>
+          <label className="field-label">Artist Name</label>
+          <input className="field-input" value={form.name || ""} onChange={(e) => set("name", e.target.value)} placeholder="Nithya" />
+
+          <div className="sub-header" style={{ marginBottom: 12 }}>
+            <span>Roles (shown as FOUNDER | DESIGNER | …)</span>
+            <button type="button" className="btn-add" onClick={addRole}>+ Add Role</button>
           </div>
-          <label className="field-label">Bio</label>
-          <textarea className="field-textarea" rows={6} value={form.bio || ""} onChange={(e) => set("bio", e.target.value)} />
-          <label className="field-label">Quote</label>
-          <input className="field-input" value={form.quote || ""} onChange={(e) => set("quote", e.target.value)} />
-        </div>
-
-        <div>
-          <label className="field-label">Portrait Image</label>
-          <ImagePreview currentSrc={form.portraitImg} label="Portrait" name="portraitImg" onChange={setFile} />
-          <label className="field-label" style={{ marginTop: 16 }}>Featured Works (3)</label>
-          <div className="featured-grid">
-            {["featured1","featured2","featured3"].map((key) => (
-              <ImagePreview key={key} currentSrc={form[key]} label={key} name={key} onChange={setFile} />
+          <div className="role-list">
+            {form.roles.map((role, i) => (
+              <div key={i} className="marquee-row" style={{ marginBottom: 8 }}>
+                <input className="field-input" value={role} onChange={(e) => setRole(i, e.target.value)} placeholder="e.g. Gemmologist" />
+                <button type="button" className="btn-remove" onClick={() => removeRole(i)}>✕</button>
+              </div>
             ))}
           </div>
+
+          <label className="field-label" style={{ marginTop: 14 }}>Intro Line</label>
+          <input className="field-input" value={form.intro || ""} onChange={(e) => set("intro", e.target.value)} placeholder="I'm the artist and creator behind Empavai." />
+
+          <div className="sub-header" style={{ marginBottom: 12 }}>
+            <span>Story Paragraphs</span>
+            <button type="button" className="btn-add" onClick={addPara}>+ Add Paragraph</button>
+          </div>
+          {form.paragraphs.map((p, i) => (
+            <div key={i} className="para-row">
+              <textarea className="field-textarea" rows={4} value={p} onChange={(e) => setPara(i, e.target.value)} placeholder={`Paragraph ${i + 1}`} />
+              <button type="button" className="btn-remove" onClick={() => removePara(i)}>✕</button>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Right: images + quote ── */}
+        <div>
+          <label className="field-label">Portrait Image</label>
+          <div className="artist-portrait-box">
+            <ImagePreview currentSrc={form.portraitImg} label="Portrait" name="portraitImg" onChange={setFile} />
+          </div>
+
+          <label className="field-label" style={{ marginTop: 16 }}>Award / Books Image</label>
+          <div className="artist-award-box">
+            <ImagePreview currentSrc={form.awardImg} label="Award" name="awardImg" onChange={setFile} />
+          </div>
+
+          <label className="field-label" style={{ marginTop: 16 }}>Quote (one line per row)</label>
+          <textarea className="field-textarea" rows={4} value={form.quote || ""} onChange={(e) => set("quote", e.target.value)} placeholder={"Inspired by nature.\nCrafted with meaning.\nTimeless by design."} />
+
+          <label className="field-label">Quote Author</label>
+          <input className="field-input" value={form.quoteAuthor || ""} onChange={(e) => set("quoteAuthor", e.target.value)} placeholder="Nithya" />
+
+          <label className="field-label">Footer Line (optional)</label>
+          <input className="field-input" value={form.studioInfo || ""} onChange={(e) => set("studioInfo", e.target.value)} placeholder="Empavai Studio · Kerala, India" />
         </div>
       </div>
     </div>
@@ -417,7 +458,7 @@ export default function AboutCMS() {
   const tabs = [
     { id: "hero",   label: "🎬 Hero",   desc: "Carousel & Marquee" },
     { id: "about",  label: "📖 About",  desc: "Text & Images" },
-    { id: "artist", label: "🎨 Artist", desc: "Bio & Portfolio" },
+    { id: "artist", label: "🎨 Artist", desc: "Story, Quote & Images" },
   ];
 
   return (

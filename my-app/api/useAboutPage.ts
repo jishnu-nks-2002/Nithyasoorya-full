@@ -21,19 +21,15 @@ export interface AboutPageData {
     imageBottom: string;
   };
   artist: {
+    heading: string;
     name: string;
-    title: string;
-    specialty: string;
-    bio: string;
-    worksCount: number | string;
-    yearsActive: number | string;
-    collectors: number | string;
-    quote: string;
-    tag: string;
+    roles: string[];
+    intro: string;
+    paragraphs: string[];
+    quote: string;          // lines separated by \n
+    quoteAuthor: string;
     portraitImg: string;
-    featured1: string;
-    featured2: string;
-    featured3: string;
+    awardImg: string;
     studioInfo: string;
   };
 }
@@ -65,20 +61,20 @@ const DEFAULTS: AboutPageData = {
     imageBottom: "/images/p-4.jpeg",
   },
   artist: {
-    name:        "Kavya Nair",
-    title:       "Crystal & Resin Sculptor",
-    specialty:   "Amethyst · Fluid Resin · Sacred Geometry",
-    bio:         "Kavya channels the ancient language of stone into contemporary form. Her work bridges geological time with present stillness — each piece a meditation on matter and memory.",
-    worksCount:  34,
-    yearsActive: 8,
-    collectors:  412,
-    quote:       "Every material carries a memory. My work is simply to listen.",
-    tag:         "Lead Artist",
+    heading:     "About the Artist",
+    name:        "Nithya",
+    roles:       ["Founder", "Jewellery Designer", "Gemmologist"],
+    intro:       "I'm the artist and creator behind Empavai.",
+    paragraphs: [
+      "For over twenty years, jewellery design has been my creative language—a journey recognized by honours including the World Gold Council Jewellery Awards in the MENA region.",
+      "Empavai marks a new chapter in that journey, allowing my imagination to take shape as crystal art decor that brings beauty and meaning to every space.",
+      "As a creator, I let my materials themselves guide the design. Inspired by forests, flowing water, ancient symbolism and the quiet energy of natural materials, every piece is handcrafted with close attention to texture, form and intention.",
+    ],
+    quote:       "Inspired by nature.\nCrafted with meaning.\nTimeless by design.",
+    quoteAuthor: "Nithya",
     portraitImg: "/images/person/img-1.jpeg",
-    featured1:   "/images/p-1.jpeg",
-    featured2:   "/images/p-2.jpeg",
-    featured3:   "/images/p-3.jpeg",
-    studioInfo:  "Empavai Studio · Kerala, India · Est. 2016",
+    awardImg:    "/images/p-1.jpeg",
+    studioInfo:  "",
   },
 };
 
@@ -109,9 +105,7 @@ function prefixAllImages(data: any) {
     artist: {
       ...data.artist,
       portraitImg: prefixUrl(data.artist.portraitImg),
-      featured1:   prefixUrl(data.artist.featured1),
-      featured2:   prefixUrl(data.artist.featured2),
-      featured3:   prefixUrl(data.artist.featured3),
+      awardImg:    prefixUrl(data.artist.awardImg),
     },
   };
 }
@@ -145,7 +139,22 @@ function mergeWithDefaults(dbData: any) {
     bodyRight: dbData.about?.bodyRight || DEFAULTS.about.bodyRight,
   };
 
-  const artist = { ...DEFAULTS.artist, ...dbData.artist };
+  const dbArtist = dbData.artist || {};
+  const toArr = (v: any, fallback: string[]) => {
+    let arr = v;
+    if (typeof v === "string") { try { arr = JSON.parse(v); } catch { arr = []; } }
+    return Array.isArray(arr) && arr.length ? arr : fallback;
+  };
+  const artist = {
+    ...DEFAULTS.artist,
+    ...dbArtist,
+    roles:      toArr(dbArtist.roles,      DEFAULTS.artist.roles),
+    paragraphs: toArr(dbArtist.paragraphs, DEFAULTS.artist.paragraphs),
+    // old documents may lack the new image/quote fields
+    awardImg:   dbArtist.awardImg   || DEFAULTS.artist.awardImg,
+    portraitImg: dbArtist.portraitImg || DEFAULTS.artist.portraitImg,
+    quote:      dbArtist.quote      || DEFAULTS.artist.quote,
+  };
 
   return {
     hero:   normaliseHero({ ...DEFAULTS.hero,   ...dbData.hero   }),

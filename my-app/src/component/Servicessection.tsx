@@ -121,6 +121,30 @@ const imgUrl = (img: any): string => {
   return /^(https?:|data:)/.test(u) ? u : `${API}/${u.replace(/^\/+/, "")}`
 }
 
+// Key used to compare images: just the file name, lowercase, no query string
+const imgKey = (src: string): string => {
+  try {
+    const path = src.split("?")[0].split("#")[0]
+    return decodeURIComponent(path.split("/").pop() ?? "").toLowerCase()
+  } catch {
+    return src.toLowerCase()
+  }
+}
+
+// Every image a category might carry (covers different field names)
+const categoryImageKeys = (cat: any): string[] => {
+  const raw: any[] = [
+    cat?.image,
+    cat?.imageUrl,
+    cat?.thumbnail,
+    cat?.banner,
+    cat?.cover,
+    cat?.coverImage,
+    ...(Array.isArray(cat?.images) ? cat.images : []),
+  ]
+  return raw.map(imgUrl).filter(Boolean).map(imgKey)
+}
+
 const norm = (s: any): string => String(s ?? "").trim().toLowerCase()
 
 // product.category can be an id, a category name, or a populated object
@@ -152,17 +176,22 @@ async function fetchServices(): Promise<Service[]> {
     .filter((c) => c?.isActive !== false)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
+  // Keys of ALL category images (own + other categories), so none of them appear in a carousel
+  const blockedKeys = new Set(catList.flatMap(categoryImageKeys))
+
   return categories.map((cat, i) => {
     const catProducts = products.filter((p) => belongsTo(p, cat))
 
-    // The category's own image, used only to EXCLUDE it from the carousel
-    const catImg = imgUrl(cat.image)
-
-    // Carousel: ONLY product images of this collection (max 6, de-duplicated)
-    const images = Array.from(
-      new Set(catProducts.flatMap(productImages).filter(Boolean))
-    )
-      .filter((src) => src !== catImg)
+    // Carousel: ONLY product images (max 6, de-duplicated), never a category image
+    const seen = new Set<string>()
+    const images = catProducts
+      .flatMap(productImages)
+      .filter((src) => {
+        const key = imgKey(src)
+        if (!key || blockedKeys.has(key) || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
       .slice(0, 6)
 
     return {
