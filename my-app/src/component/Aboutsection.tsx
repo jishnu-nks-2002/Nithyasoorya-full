@@ -22,18 +22,18 @@ interface AboutSectionProps {
 }
 
 const AboutSection: React.FC<AboutSectionProps> = ({
-  card1Label = 'CURRENT EXHIBITION',
-  card1Title = 'EPHEMERAL SILHOUETTES',
-  card1Description = 'A curation of meditative landscapes captured in brush and resin. Experience the intersection of ancient traditions and contemporary artistic expression through our carefully selected collection.',
-  card1ImageSrc = '/images/p-3.jpeg',
+  card1Label = 'WELCOME TO EMPAVAI',
+  card1Title = 'Where creativity meets elegance',
+  card1Description = 'Our curated collection blends artistic expression with the quiet power of crystals—creations designed to elevate your space, your style and your spirit.',
+  card1ImageSrc = '/images/home-about-1.jpeg',
   card1ImageAlt = 'Sacred Krishna Landscape',
 
-  card2Label = 'FEATURED PIECE',
-  card2Title = 'THE MEDITATING BUDDHA',
-  card2Description = 'In the depth of the sculpture, we find the silence we often seek in the world outside. This masterpiece represents the perfect harmony between form and spirit.',
+  card2Label = 'INSPIRED BY NATURE · CRAFTED WITH MEANING',
+  card2Title = 'Art that holds an energy.',
+  card2Description = 'One-of-a-kind crystal art décor and adornments, thoughtfully handcrafted to bring beauty, balance and intention into everyday life',
   card2ButtonText = 'EXPLORE THE COLLECTION',
   card2ButtonLink = '/collections',
-  card2ImageSrc = '/images/p-4.jpeg',
+  card2ImageSrc = '/images/home-about-2.jpeg',
   card2ImageAlt = 'Buddha in meditation pose',
 }) => {
 

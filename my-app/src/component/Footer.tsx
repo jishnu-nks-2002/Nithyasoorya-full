@@ -418,7 +418,7 @@ const Footer: React.FC<FooterProps> = ({
   brandName = 'EMPAVAI',
   tagline = 'Museum Exhibition 2024',
   description = 'A sanctuary for those who believe beauty still has something urgent to say. Curating the finest intersection of ancient traditions and contemporary vision.',
-  logoSrc = '/images/logo.jpeg',   // ← swap with your actual logo path e.g. '/logo.svg'
+  logoSrc = '/logo-main.png', // swap with your actual logo path e.g. '/logo.svg'
 
   // ── Fallbacks (used only when the API is unreachable) ──
   nithyasoooriLinks = [

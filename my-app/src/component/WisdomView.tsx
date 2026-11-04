@@ -86,7 +86,7 @@ export default function WisdomView({ slug }: { slug: string }) {
         productName={page?.title ?? slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
         productSeries="Crystal Wisdom"
         productCategory="Empavai"
-        backgroundImage={page?.heroImage?.url || '/images/stones-hero.jpg'}
+        backgroundImage={page?.heroImage?.url || '/images/brecamp-collection-3.png'}
       />
 
       {loading && (

@@ -18,12 +18,12 @@ export default function ProductBreadcrumb({
   items = [
     { label: "Home", href: "/" },
     { label: "Collections", href: "/collections" },
-    { label: "Crystal Art Decor", href: "/collections/crystal-art-decor" },
+    { label: "Crystal Art Decor", href: "/images/brecam-collaction-1.png" },
   ],
   productName = "Nocturnal Core",
   productSeries = "Obsidian Dream",
   productCategory = "Crystal Art Decor",
-  backgroundImage = "/images/barcamp.png",
+  backgroundImage = "/images/brecamp-collection-3.png",
 }: ProductBreadcrumbProps) {
   const [scrollY, setScrollY] = useState(0);
   const [loaded, setLoaded] = useState(false);

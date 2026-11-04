@@ -16,11 +16,6 @@ const cormorant = Cormorant_Garamond({
 // ✅ FIX: fallback so the request never goes to "undefined/api/contact"
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const studios = [
-  { city: "KERALA STUDIO",  address: "Thrissur, Kerala", postal: "India — 680 001", mapHref: "#" },
-  { city: "ONLINE ATELIER", address: "Worldwide Shipping", postal: "empavai.com",    mapHref: "#" },
-];
-
 const processSteps = [
   {
     icon: (
@@ -28,8 +23,8 @@ const processSteps = [
         <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
       </svg>
     ),
-    title: "Curation Phase",
-    desc: "Initial site analysis and conceptual sketches tailored to your environment.",
+    title: "Personalised Design",
+    desc: "Thoughtfully designed around your choice of crystals, colours, themes and artistic details. Each piece is individually created using carefully selected crystals and materials, with attention to every detail.",
   },
   {
     icon: (
@@ -37,8 +32,8 @@ const processSteps = [
         <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
       </svg>
     ),
-    title: "Artisanal Craft",
-    desc: "Hand-finished sculpting using premium sustainable materials and unique pigments.",
+    title: "Creation & Delivery",
+    desc: "Made-to-order creations typically take one week, subject to material availability. Shipping arrangements are communicated individually to ensure safe delivery.",
   },
   {
     icon: (
@@ -46,8 +41,8 @@ const processSteps = [
         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
       </svg>
     ),
-    title: "White-Glove Delivery",
-    desc: "Insured, crated delivery with optional installation and placement guidance.",
+    title: "Customisation Enquiries",
+    desc: "Have something special in mind? Connect with us through WhatsApp or our website enquiry form to bring your vision to life.",
   },
 ];
 
@@ -289,27 +284,11 @@ export default function ConnectSection() {
               <span className="cs-eyebrow-text">Inquiries &amp; Access</span>
             </div>
             <h1 className={`cs-heading ${cormorant.className}`}>
-              Connect with<br />the <em>Studio.</em>
+              Connect with<br /><em>Empavai.</em>
             </h1>
             <p className="cs-subtext">
-              For collectors, collaborators, and the curious. Our studio welcomes dialogues on sculptural artistry and bespoke commissions.
+              For art lovers, crystal enthusiasts, and those seeking something truly personal. Empavai welcomes enquiries, creative collaborations, and bespoke creations inspired by nature and crafted with meaning.
             </p>
-            <div className="cs-studios">
-              {studios.map(s => (
-                <div key={s.city}>
-                  <div className="cs-studio-label">{s.city}</div>
-                  <div className={`cs-studio-addr ${cormorant.className}`}>
-                    {s.address}<br />{s.postal}
-                  </div>
-                  <a href={s.mapHref} className="cs-map-link">
-                    View Map
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                    </svg>
-                  </a>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="cs-hero-img">
@@ -327,9 +306,9 @@ export default function ConnectSection() {
         {/* LOWER */}
         <div className="cs-lower">
           <div className="cs-commission">
-            <h2 className={`cs-section-title ${cormorant.className}`}>Bespoke Commissions</h2>
+            <h2 className={`cs-section-title ${cormorant.className}`}>Bespoke Creations</h2>
             <p className="cs-section-body">
-              Empavai offers a limited number of commission slots annually for private residences and corporate spaces. Every piece is an intimate collaboration between the collector and the studio.
+              At Empavai, every creation is a reflection of nature, artistry and individuality. Our handcrafted crystal art decor can be thoughtfully customised to complement your space, personal preferences or special occasions.
             </p>
             <div className="cs-steps">
               {processSteps.map(step => (

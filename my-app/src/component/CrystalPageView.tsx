@@ -201,7 +201,7 @@ export default function CrystalPageView({ slug }: { slug: string }) {
             productName={page.title}
             productSeries={page.eyebrow || 'Crystal Wisdom'}
             productCategory="Crystal Wisdom"
-            backgroundImage={img(page.heroImageUrl) || '/images/stones-hero.jpg'}
+            backgroundImage={img(page.heroImageUrl) || '/images/brecamp-collection-3.png'}
           />
 
           {/* Section tabs */}

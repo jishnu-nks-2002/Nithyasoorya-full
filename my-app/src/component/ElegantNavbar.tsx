@@ -150,7 +150,7 @@ const Logo = () => {
     );
   }
   return (
-    <Image src="/images/logo.jpeg" alt="Empavai logo" width={40} height={40}
+    <Image src="/logo-main.png" alt="Empavai logo" width={40} height={40}
       onError={() => setImgError(true)}
       style={{ objectFit: "contain", height: 40, width: "auto" }} />
   );

@@ -126,7 +126,7 @@ export default function StonesPage() {
         productName="Sacred Stones"
         productSeries="Collections"
         productCategory="Sacred Stones"
-        backgroundImage="/images/stones-hero.jpg"
+        backgroundImage="/images/brecamp-collection-3.png"
       />
 
       {/* ── COLLECTION GRID ─────────────────────────────────────────────────── */}

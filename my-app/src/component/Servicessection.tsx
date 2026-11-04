@@ -155,10 +155,15 @@ async function fetchServices(): Promise<Service[]> {
   return categories.map((cat, i) => {
     const catProducts = products.filter((p) => belongsTo(p, cat))
 
-    // Carousel: category image first, then product images (max 6, de-duplicated)
+    // The category's own image, used only to EXCLUDE it from the carousel
+    const catImg = imgUrl(cat.image)
+
+    // Carousel: ONLY product images of this collection (max 6, de-duplicated)
     const images = Array.from(
-      new Set([imgUrl(cat.image), ...catProducts.flatMap(productImages)].filter(Boolean))
-    ).slice(0, 6)
+      new Set(catProducts.flatMap(productImages).filter(Boolean))
+    )
+      .filter((src) => src !== catImg)
+      .slice(0, 6)
 
     return {
       id: String(cat._id ?? cat.slug ?? i),
