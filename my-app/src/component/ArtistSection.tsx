@@ -50,9 +50,9 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
         .as-portrait::after { content:''; position:absolute; inset:0; pointer-events:none;
           background: linear-gradient(to bottom, transparent 70%, rgba(13,5,22,0.45) 100%); }
 
-        /* award */
+        /* award (portrait-shaped) */
         .as-award-wrap { grid-area:award; display:flex; justify-content:center; }
-        .as-award { position:relative; width:100%; max-width:400px; aspect-ratio:1/1; overflow:hidden;
+        .as-award { position:relative; width:100%; max-width:400px; aspect-ratio:4/5; overflow:hidden;
           border-radius:4px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.45); }
 
         /* quote */
@@ -124,7 +124,7 @@ export default function ArtistSection({ data }: { data?: AboutPageData["artist"]
                     alt="Award and reference books"
                     fill
                     sizes="400px"
-                    style={{ objectFit: "cover" }}
+                    style={{ objectFit: "cover", objectPosition: "center top" }}
                     unoptimized
                   />
                 </div>
