@@ -21,8 +21,7 @@ export default function ProductBreadcrumb({
     { label: "Crystal Art Decor", href: "/images/brecam-collaction-1.png" },
   ],
   productName = "Nocturnal Core",
-  productSeries = "Obsidian Dream",
-  productCategory = "Crystal Art Decor",
+ 
   backgroundImage = "/images/brecamp-collection-3.png",
 }: ProductBreadcrumbProps) {
   const [scrollY, setScrollY] = useState(0);
@@ -153,20 +152,7 @@ export default function ProductBreadcrumb({
         .pbc-left {
           display: flex; flex-direction: column; gap: 8px;
         }
-        .pbc-eyebrow {
-          display: flex; align-items: center; gap: 10px;
-          animation: bcReveal 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s both;
-        }
-        .pbc-eyebrow-line {
-          width: 0; height: 1px;
-          background: linear-gradient(to right, #6b3fa0, rgba(107,63,160,0.3));
-          animation: lineGrow 0.6s cubic-bezier(0.16,1,0.3,1) 0.5s forwards;
-        }
-        .pbc-eyebrow-text {
-          font-size: 9px; letter-spacing: 0.32em; text-transform: uppercase;
-          font-weight: 400; color: #9b6fe0;
-          font-family: 'Jost', sans-serif;
-        }
+        
 
         .pbc-title {
           font-family: 'Cormorant Garamond', serif;
@@ -315,12 +301,6 @@ export default function ProductBreadcrumb({
 
             {/* Left */}
             <div className="pbc-left">
-              <div className="pbc-eyebrow">
-                <div className="pbc-eyebrow-line" />
-                <span className="pbc-eyebrow-text">
-                  {productSeries} · {productCategory}
-                </span>
-              </div>
               <h1 className="pbc-title">
                 {productName.split(" ").map((word, i, arr) =>
                   i === arr.length - 1

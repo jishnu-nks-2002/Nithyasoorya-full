@@ -534,8 +534,8 @@ const Footer: React.FC<FooterProps> = ({
     { handle: '@nithyasoori',   label: 'Nithyasoori', href: 'https://www.instagram.com/nithyasoori?srtk=MXg1dGlqZm1jOXhtcQ==' },
   ],
   email    = 'hello@empavai.com',
-  phone    = '+91 98765 43210',
-  address  = 'Gallery District, Chennai, India',
+  phone    = '971507593631',
+  address  = 'UAE',
   copyright = `© ${new Date().getFullYear()} Empavai. All rights reserved.`,
 }) => {
   const [emailHovered, setEmailHovered] = useState(false);

@@ -23,7 +23,7 @@ interface AboutSectionProps {
 
 const AboutSection: React.FC<AboutSectionProps> = ({
   card1Label = 'WELCOME TO EMPAVAI',
-  card1Title = 'Where creativity meets elegance',
+  card1Title = 'Where Nature Meets Artistry',
   card1Description = 'Our curated collection blends artistic expression with the quiet power of crystals—creations designed to elevate your space, your style and your spirit.',
   card1ImageSrc = '/images/home-about-1.jpeg',
   card1ImageAlt = 'Sacred Krishna Landscape',
