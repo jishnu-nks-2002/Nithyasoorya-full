@@ -20,16 +20,29 @@ export default function AnimatedFavicon() {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
 
-    // Replace Next's static icon links with one we control
-    document
-      .querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']")
-      .forEach((el) => el.remove());
+    // Our own icon link
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/png";
-    document.head.appendChild(link);
+    link.setAttribute("data-animated", "true");
+
+    // Remove every other icon link and make sure ours is in the head
+    const ensureLink = () => {
+      document
+        .querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']")
+        .forEach((el) => {
+          if (el !== link) el.remove();
+        });
+      if (!link.isConnected) document.head.appendChild(link);
+    };
+    ensureLink();
+
+    // Next re-injects its own icon tags on navigation, so re-apply ours
+    const observer = new MutationObserver(ensureLink);
+    observer.observe(document.head, { childList: true });
 
     const img = new Image();
+    img.onerror = () => console.error("favicon-base.png failed to load");
     img.src = "/favicon-base.png";
 
     let stop: (() => void) | null = null;
@@ -110,6 +123,7 @@ export default function AnimatedFavicon() {
     return () => {
       cancelled = true;
       stop?.();
+      observer.disconnect();
     };
   }, []);
 
