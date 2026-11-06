@@ -6,6 +6,60 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardHeader, Button, FormGroup, PageHeader, Spinner } from '../components/ui';
 import styles from './Settings.module.css';
 
+/* Password input with a show / hide toggle */
+function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        style={{ paddingRight: 44 }}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        title={show ? 'Hide password' : 'Show password'}
+        style={{
+          position: 'absolute',
+          right: 12,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'none',
+          border: 'none',
+          padding: 4,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#8a8a94',
+        }}
+      >
+        {show ? (
+          /* eye-off */
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </svg>
+        ) : (
+          /* eye */
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { admin, login } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -110,64 +164,11 @@ export default function Settings() {
     <div>
       <PageHeader
         title="Settings"
-        subtitle="Configure your Gallery Hero section and account"
+        subtitle="Configure account"
       />
 
       {/* ── Hero Section Settings ── */}
-      <Card className={styles.card}>
-        <CardHeader title="Hero section" />
-        <form onSubmit={handleSaveHero} className={styles.form}>
-          <div className={styles.formGrid}>
-            <FormGroup label="Vertical text">
-              <input
-                type="text"
-                value={hero.verticalText}
-                onChange={(e) => setHero({ ...hero, verticalText: e.target.value })}
-                placeholder="Museum Exhibition 2024"
-              />
-            </FormGroup>
-            <FormGroup label="Left label">
-              <input
-                type="text"
-                value={hero.leftLabel}
-                onChange={(e) => setHero({ ...hero, leftLabel: e.target.value })}
-                placeholder="FEATURED EXHIBITION"
-              />
-            </FormGroup>
-            <FormGroup label="CTA button text">
-              <input
-                type="text"
-                value={hero.ctaText}
-                onChange={(e) => setHero({ ...hero, ctaText: e.target.value })}
-                placeholder="EXPLORE THE COLLECTION"
-              />
-            </FormGroup>
-            <FormGroup label="CTA link">
-              <input
-                type="text"
-                value={hero.ctaLink}
-                onChange={(e) => setHero({ ...hero, ctaLink: e.target.value })}
-                placeholder="#collection"
-              />
-            </FormGroup>
-            <FormGroup label="Autoplay interval (ms)" hint="Time each slide is shown. Min: 1000ms">
-              <input
-                type="number"
-                value={hero.autoPlayInterval}
-                onChange={(e) => setHero({ ...hero, autoPlayInterval: e.target.value })}
-                min={1000}
-                max={30000}
-                step={500}
-              />
-            </FormGroup>
-          </div>
-          <div className={styles.formFooter}>
-            <Button type="submit" variant="primary" loading={savingHero}>
-              Save hero settings
-            </Button>
-          </div>
-        </form>
-      </Card>
+      
 
       {/* ── API Reference ── */}
       <Card className={styles.card}>
@@ -233,8 +234,7 @@ export default function Settings() {
         <form onSubmit={handleSavePwd} className={styles.form}>
           <div className={styles.formGrid}>
             <FormGroup label="Current password">
-              <input
-                type="password"
+              <PasswordInput
                 value={pwd.currentPassword}
                 onChange={(e) => setPwd({ ...pwd, currentPassword: e.target.value })}
                 placeholder="••••••••"
@@ -242,8 +242,7 @@ export default function Settings() {
               />
             </FormGroup>
             <FormGroup label="New password">
-              <input
-                type="password"
+              <PasswordInput
                 value={pwd.newPassword}
                 onChange={(e) => setPwd({ ...pwd, newPassword: e.target.value })}
                 placeholder="••••••••"
@@ -251,8 +250,7 @@ export default function Settings() {
               />
             </FormGroup>
             <FormGroup label="Confirm new password">
-              <input
-                type="password"
+              <PasswordInput
                 value={pwd.confirmPassword}
                 onChange={(e) => setPwd({ ...pwd, confirmPassword: e.target.value })}
                 placeholder="••••••••"

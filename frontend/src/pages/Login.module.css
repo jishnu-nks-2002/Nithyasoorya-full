@@ -1,17 +1,81 @@
 .page {
   min-height: 100vh;
   display: flex;
+  background: var(--bg);
+}
+
+/* ── Left: slider ── */
+.left {
+  position: relative;
+  flex: 1.1;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a1650 0%, #6b3fa0 55%, #c79bd9 100%);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  transition: opacity 1.2s ease, transform 6s ease;
+}
+
+.slideActive {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.leftOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 8, 40, 0.15) 0%,
+    rgba(20, 8, 40, 0.05) 50%,
+    rgba(20, 8, 40, 0.45) 100%
+  );
+  pointer-events: none;
+}
+
+.dots {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.5);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.dotActive {
+  width: 26px;
+  background: #fff;
+}
+
+/* ── Right: form ── */
+.right {
+  flex: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
-  padding: 1rem;
+  padding: 2rem 1.5rem;
+  background: var(--surface);
 }
 
 .card {
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 2.5rem 2rem;
   width: 100%;
   max-width: 380px;
   animation: fadeIn 0.25s ease;
@@ -20,32 +84,43 @@
 .logoWrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
 }
 
-.logo {
-  width: 48px;
-  height: 48px;
-  background: var(--accent);
-  border-radius: 12px;
+.logoImg {
+  max-height: 64px;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+.logoText {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+}
+
+.logoName {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 28px;
+  letter-spacing: 0.35em;
+  padding-left: 0.35em;
+  color: var(--text);
+}
+
+.logoSub {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  padding-left: 0.3em;
+  color: var(--accent);
 }
 
 .heading {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
   text-align: center;
-  margin-bottom: 4px;
-}
-
-.subheading {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .errorBox {
@@ -75,19 +150,39 @@
   color: var(--text-muted);
 }
 
-.hint {
-  margin-top: 1.5rem;
-  font-size: 12px;
-  color: var(--text-hint);
-  text-align: center;
-  line-height: 1.5;
+/* password field + eye toggle */
+.passwordWrap {
+  position: relative;
 }
 
-.hint code {
-  background: var(--bg);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 11px;
+.passwordWrap input {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-hint, #8a8a94);
+  transition: color 0.2s ease;
+}
+
+.eyeBtn:hover {
   color: var(--accent);
-  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Mobile: hide slider, show only the form ── */
+@media (max-width: 860px) {
+  .left {
+    display: none;
+  }
 }
