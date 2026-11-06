@@ -867,7 +867,7 @@ export default function EmpavaiDomeGallery({ images: imagesProp, ...rest }: { im
             <span style={{ fontFamily:"'Jost',sans-serif", fontSize:9.5, fontWeight:600, letterSpacing:'0.3em', textTransform:'uppercase', color:'#6b3fa0' }}>Sphere of Art</span>
           </div>
           <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(36px,5.5vw,66px)', fontWeight:400, color:'#1e1030', margin:0, lineHeight:1.06, letterSpacing:'-0.01em' }}>
-            The <em style={{ fontStyle:'italic', color:'#6b3fa0' }}>The Crystal</em> Dome
+            The <em style={{ fontStyle:'italic', color:'#6b3fa0' }}>Crystal</em> Dome
           </h2>
           <p style={{ fontFamily:"'Jost',sans-serif", fontSize:13, fontWeight:300, color:'#9b82c4', letterSpacing:'0.06em', marginTop:14, marginBottom:0, maxWidth:420, lineHeight:1.75 }}>
             Drag to explore - click any piece to highlight it. Each one holds a world.

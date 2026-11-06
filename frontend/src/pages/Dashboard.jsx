@@ -175,13 +175,7 @@ export default function Dashboard() {
       ══════════════════════════════════════════════ */}
 
       {/* Stone stats row */}
-      <div className={styles.sectionLabel}>Sacred Stones</div>
-      <div className={styles.statsGrid}>
-        <StatCard label="Total stones"    value={stones.length} />
-        <StatCard label="Published"       value={activeStones.length}   color="var(--success)" />
-        <StatCard label="Featured"        value={featuredStones.length} color="#7B4BA0" />
-        <StatCard label="Categories"      value={stoneCategories.length} color="var(--info)" />
-      </div>
+    
 
       {/* Stones list card */}
      

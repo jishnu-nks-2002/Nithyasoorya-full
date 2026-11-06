@@ -17,11 +17,26 @@ const DEFAULT_SLIDES: SlideItem[] = [
   { type: 'image', src: '/images/p-3.jpeg', alt: 'Modern Sculpture' },
 ];
 
+// Text shown in the scrolling marquee strip (edit freely, or supply
+// `marqueeItems` from the API response to manage it from the admin panel).
+const DEFAULT_MARQUEE: string[] = [
+  'Handcrafted Sculptures',
+  'Sacred Spaces',
+  'Crystal Wisdom',
+  'Art & Adornments',
+];
+
 const GalleryHero: React.FC = () => {
+  // `data` is read loosely for the optional marquee fields so this compiles
+  // even if the hook's type doesn't declare them yet.
   const { data, loading, error } = useGalleryHero();
+  const heroData = data as (typeof data & { marqueeItems?: string[]; marqueeSpeed?: number }) | null | undefined;
 
   const slides: SlideItem[] = data?.slides?.length ? (data.slides as SlideItem[]) : DEFAULT_SLIDES;
   const autoPlayInterval = data?.autoPlayInterval ?? 5000;
+
+  const marqueeItems: string[] = heroData?.marqueeItems?.length ? heroData.marqueeItems : DEFAULT_MARQUEE;
+  const marqueeSpeed: number = heroData?.marqueeSpeed ?? 30; // seconds per full loop
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dotProgress, setDotProgress] = useState(0);
@@ -196,6 +211,30 @@ const GalleryHero: React.FC = () => {
               />
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ─── Marquee strip ─────────────────────────────────────────────── */}
+      {marqueeItems.length > 0 && (
+        <div
+          className="gallery-marquee"
+          style={{ '--marquee-duration': `${marqueeSpeed}s` } as React.CSSProperties}
+          aria-hidden="true"
+        >
+          <div className="gallery-marquee-track">
+            {/* Two identical groups → seamless loop */}
+            {[0, 1].map(group => (
+              <div className="gallery-marquee-group" key={group}>
+                {/* Items repeated so a short list still fills wide screens */}
+                {[...marqueeItems, ...marqueeItems].map((text, i) => (
+                  <span className="gallery-marquee-item" key={`${group}-${i}`}>
+                    {text}
+                    <span className="gallery-marquee-sep">✦</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

@@ -47,31 +47,37 @@ const AboutSection: React.FC<AboutSectionProps> = ({
   };
 
   return (
-    <section className="about-cards-section">
+    <section className="ab-section">
+      {/* soft background glows */}
+      <span className="ab-glow ab-glow-1" aria-hidden="true" />
+      <span className="ab-glow ab-glow-2" aria-hidden="true" />
 
-      {/* Card 1: Image Left, Content Right */}
-      <div className="about-card about-card-left">
-        <div className="about-card-image-wrapper about-card-image-left">
-          <Image
-            src={card1ImageSrc}
-            alt={card1ImageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="about-card-image"
-            style={{ objectFit: 'cover' }}
-          />
+      {/* ─── Row 1: image left (arch), floating card right ─────────────── */}
+      <div className="ab-row ab-row-1">
+        <div className="ab-media ab-media-arch">
+          <div className="ab-img">
+            <Image
+              src={card1ImageSrc}
+              alt={card1ImageAlt}
+              fill
+              sizes="(max-width: 968px) 100vw, 55vw"
+              className="ab-img-el"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
         </div>
 
-        <div className="about-card-content about-card-content-right">
-          <div className="about-card-label">{card1Label}</div>
+        <div className="ab-card">
+          <span className="ab-number" aria-hidden="true">01</span>
+          <div className="ab-label"><i />{card1Label}</div>
 
           <ScrollReveal
             enableBlur={true}
             baseOpacity={0.2}
             baseRotation={1.5}
             blurStrength={2}
-            containerClassName="about-card-title-wrapper"
-            textClassName="about-card-title-text"
+            containerClassName="ab-title-wrapper"
+            textClassName="ab-title-text"
           >
             {card1Title}
           </ScrollReveal>
@@ -81,26 +87,27 @@ const AboutSection: React.FC<AboutSectionProps> = ({
             baseOpacity={0.3}
             baseRotation={1}
             blurStrength={1.5}
-            containerClassName="about-card-description-wrapper"
-            textClassName="about-card-description-text"
+            containerClassName="ab-desc-wrapper"
+            textClassName="ab-desc-text"
           >
             {card1Description}
           </ScrollReveal>
         </div>
       </div>
 
-      {/* Card 2: Content Left, Image Right */}
-      <div className="about-card about-card-right">
-        <div className="about-card-content about-card-content-left">
-          <div className="about-card-label">{card2Label}</div>
+      {/* ─── Row 2: floating card left, image right (rounded) ──────────── */}
+      <div className="ab-row ab-row-2">
+        <div className="ab-card">
+          <span className="ab-number" aria-hidden="true">02</span>
+          <div className="ab-label"><i />{card2Label}</div>
 
           <ScrollReveal
             enableBlur={true}
             baseOpacity={0.2}
             baseRotation={1.5}
             blurStrength={2}
-            containerClassName="about-card-title-wrapper"
-            textClassName="about-card-title-text"
+            containerClassName="ab-title-wrapper"
+            textClassName="ab-title-text"
           >
             {card2Title}
           </ScrollReveal>
@@ -110,29 +117,33 @@ const AboutSection: React.FC<AboutSectionProps> = ({
             baseOpacity={0.3}
             baseRotation={1}
             blurStrength={1.5}
-            containerClassName="about-card-description-wrapper"
-            textClassName="about-card-description-text"
+            containerClassName="ab-desc-wrapper"
+            textClassName="ab-desc-text"
           >
             {card2Description}
           </ScrollReveal>
 
-          <button className="about-card-button" onClick={handleButtonClick}>
-            {card2ButtonText}
+          <button className="ab-button" onClick={handleButtonClick}>
+            <span>{card2ButtonText}</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
 
-        <div className="about-card-image-wrapper about-card-image-right">
-          <Image
-            src={card2ImageSrc}
-            alt={card2ImageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="about-card-image"
-            style={{ objectFit: 'cover' }}
-          />
+        <div className="ab-media ab-media-soft">
+          <div className="ab-img">
+            <Image
+              src={card2ImageSrc}
+              alt={card2ImageAlt}
+              fill
+              sizes="(max-width: 968px) 100vw, 55vw"
+              className="ab-img-el"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
         </div>
       </div>
-
     </section>
   );
 };

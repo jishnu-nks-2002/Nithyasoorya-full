@@ -770,7 +770,7 @@ export default function ElegantNavbar() {
         }}
       >
         {/* Logo */}
-        <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
+        <a href="/" data-nav-brand style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
           <Logo />
           <div style={{ lineHeight: 1 }}>
             <div className={cormorant.className} style={{ fontSize: 17, fontWeight: 600, letterSpacing: "0.22em", color: "#2e1f4a", textTransform: "uppercase" }}>

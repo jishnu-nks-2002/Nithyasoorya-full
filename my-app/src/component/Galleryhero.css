@@ -4,23 +4,34 @@
   box-sizing: border-box;
 }
 
-/* ─── Hero shell ─────────────────────────────────────────────────────────── */
+/* ─── Hero shell: FULL WIDTH, whole picture visible ──────────────────────────
+   The banner spans the full page width and its height follows the current
+   picture's aspect ratio, so no edge is ever cropped.
+   --hero-ratio (width / height) is set from the TSX for the active slide.
+     --hero-top-gap : space above the banner to clear a fixed navbar
+                      (set to 0px if your navbar overlays the banner)       */
 .gallery-hero {
+  --hero-top-gap: 96px;
+
   position: relative;
   width: 100%;
-  height: 100vh;
-  height: 100svh;            /* phones: ignore the collapsing browser bar */
-  height: 100dvh;            /* phones: follow the browser bar so no gap is left */
-  min-height: 560px;
+  margin: var(--hero-top-gap) 0 0;
+  aspect-ratio: var(--hero-ratio, 16 / 9);
   overflow: hidden;
   /* Fallback bg while media loads */
   background: #f4f0f9;
+  transition: aspect-ratio 0.6s ease;
 }
 
 .gallery-hero-loading {
   position: absolute;
   inset: 0;
   background: #f4f0f9;
+}
+
+/* Keep the loading placeholder a sensible size before any ratio is known */
+.gallery-hero:has(.gallery-hero-loading) {
+  aspect-ratio: 16 / 9;
 }
 
 /* ─── Full-bleed media layer ─────────────────────────────────────────────── */
@@ -30,39 +41,78 @@
   z-index: 0;
 }
 
-/* ─── Slide change effect: crossfade + slow zoom-out (Ken Burns) ─────────── */
+/* ─── SUPER slide change: diagonal wipe + zoom/blur settle + light sweep ─────
+   1. The new slide is revealed by a slanted wipe sweeping in from the right
+      (the old slide stays underneath until it is fully covered).
+   2. Inside the wipe, the new picture starts big, blurry and bright and
+      settles sharp to its normal size (ends at 100%, so nothing is cropped).
+   3. A soft diagonal light streak sweeps across during the change.
+   Timing: wipe 1.3s, old slide hidden after 1.35s. */
 .gallery-slide {
   position: absolute;
   inset: 0;
-  opacity: 0;
   z-index: 0;
-  transition: opacity 1.4s ease-in-out;
-  will-change: opacity;
   overflow: hidden;
+  opacity: 0;
+  /* hidden: collapsed slanted shape off the right edge */
+  clip-path: polygon(120% 0, 120% 0, 120% 100%, 100% 100%);
+  /* leaving: stay visible until the new slide has covered it, then vanish */
+  transition: opacity 0s linear 1.35s, clip-path 0s linear 1.35s;
+  will-change: clip-path;
 }
 .gallery-slide.active {
   opacity: 1;
   z-index: 1;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  /* entering: slanted wipe, right to left */
+  transition: opacity 0s linear 0s, clip-path 1.3s cubic-bezier(0.77, 0, 0.18, 1) 0s;
 }
 
+/* Picture settles in: big + blurry + bright  →  sharp + normal */
 .gallery-hero-image,
 .gallery-hero-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover;      /* box already matches the picture's ratio → no crop */
   object-position: center;
-  filter: brightness(0.92) contrast(1.04);
-  transform: scale(1.12);                 /* start zoomed in */
-  transition: transform 7s ease-out;      /* slow zoom-out */
-  will-change: transform;
 }
 .gallery-slide.active .gallery-hero-image,
 .gallery-slide.active .gallery-hero-video {
-  transform: scale(1);
+  animation: gh-settle 1.9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.gallery-hero-video { opacity: 0.95; }
+@keyframes gh-settle {
+  from { transform: scale(1.28) translateX(4%); filter: blur(14px) brightness(1.45) saturate(1.3); }
+  60%  { filter: blur(0) brightness(1.08) saturate(1.1); }
+  to   { transform: scale(1) translateX(0);     filter: blur(0) brightness(1) saturate(1); }
+}
+
+/* Light streak that travels across with the wipe */
+.gallery-slide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 62%
+  );
+  transform: translateX(120%);
+  opacity: 0;
+}
+.gallery-slide.active::after {
+  animation: gh-shine 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
+}
+@keyframes gh-shine {
+  0%   { transform: translateX(120%);  opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateX(-120%); opacity: 0; }
+}
 
 /* ─── Nav dots ───────────────────────────────────────────────────────────── */
 .gallery-slider-dots {
@@ -109,24 +159,80 @@
   pointer-events: none;
 }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
-
-/* Large screens: keep the hero from becoming absurdly tall on ultra-wide monitors */
-@media (min-width: 1920px) {
-  .gallery-hero { max-height: 1200px; }
+/* ─── Marquee strip ──────────────────────────────────────────────────────────
+   Sits along the bottom of the hero, above the slides (z-index 9, just under
+   the dots). --marquee-duration is set from the TSX (seconds per loop).      */
+.gallery-marquee {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  overflow: hidden;
+  padding: 14px 0;
+  background: rgba(20, 12, 30, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  /* soft fade on the left/right edges */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
+
+.gallery-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: gh-marquee var(--marquee-duration, 30s) linear infinite;
+  will-change: transform;
+}
+.gallery-marquee:hover .gallery-marquee-track {
+  animation-play-state: paused;
+}
+
+.gallery-marquee-group {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.gallery-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  padding-right: 28px;
+  color: #ffffff;
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gallery-marquee-sep {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+/* Two identical groups sit side by side; moving by -50% loops seamlessly */
+@keyframes gh-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
 
 /* Tablets / small laptops */
 @media (max-width: 968px) {
+  .gallery-hero { --hero-top-gap: 88px; }
   .gallery-slider-dots { right: max(18px, env(safe-area-inset-right)); gap: 14px; }
 }
 
 /* Phones */
 @media (max-width: 576px) {
-  .gallery-hero { min-height: 480px; }
+  .gallery-hero { --hero-top-gap: 80px; }
   .gallery-slider-dots { right: max(14px, env(safe-area-inset-right)); gap: 12px; }
   .gallery-dot { width: 8px; height: 8px; }
   .gallery-dot.active { height: 24px; }
+
+  .gallery-marquee { padding: 10px 0; }
+  .gallery-marquee-item { font-size: 0.75rem; gap: 20px; padding-right: 20px; }
 }
 
 /* Touch screens: slightly larger, easier-to-tap dots */
@@ -137,44 +243,16 @@
   .gallery-slider-dots { gap: 16px; }
 }
 
-/* Phones held sideways (very short screens) */
-@media (orientation: landscape) and (max-height: 500px) {
-  .gallery-hero { min-height: 0; height: 100vh; height: 100svh; height: 100dvh; }
-  .gallery-slider-dots { right: max(12px, env(safe-area-inset-right)); gap: 10px; }
-}
-
-/* Any screen taller than it is wide (phones, narrow windows):
-   instead of filling the whole screen height (which crops wide pictures),
-   the hero becomes as tall as the current picture needs to be at full width,
-   plus a little breathing room.
-   --hero-ratio (width / height) is set from the TSX for the active slide.
-   Tweak the two values below to taste:
-     --hero-pad-top : empty space between the navbar and the picture
-     --hero-extra   : extra picture height (small values crop the sides a little) */
-@media (max-aspect-ratio: 1/1) {
-  .gallery-hero {
-    --hero-pad-top: 80px;
-    --hero-extra: 24px;
-    --hero-h: calc(100vw / var(--hero-ratio, 1.5) + var(--hero-extra) + var(--hero-pad-top));
-
-    min-height: 0;
-    height: min(var(--hero-h), 100svh);
-    height: min(var(--hero-h), 100dvh);
-    transition: height 0.6s ease;
-  }
-  /* media sits below the top padding; the padding shows the hero's background */
-  .gallery-media-layer { top: var(--hero-pad-top); }
-
-  .gallery-hero-image,
-  .gallery-hero-video {
-    object-fit: cover;
-  }
-}
-
 /* ─── Respect reduced-motion preference ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .gallery-hero { transition: none; }
-  .gallery-hero-image,
-  .gallery-hero-video { transform: none !important; transition: none; }
-  .gallery-slide { transition-duration: 0.01s; }
+  .gallery-slide,
+  .gallery-slide.active {
+    clip-path: none;
+    transition: opacity 0.4s linear;
+  }
+  .gallery-slide.active .gallery-hero-image,
+  .gallery-slide.active .gallery-hero-video,
+  .gallery-slide.active::after { animation: none; }
+  .gallery-marquee-track { animation: none; }
 }

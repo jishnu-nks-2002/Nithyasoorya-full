@@ -19,6 +19,7 @@ import Empavaidomegallery  from '@/component/Empavaidomegallery';
 import CrystalWisdomSection from '@/component/CrystalWisdomSection';
 
 
+
 const App: React.FC = () => {
 
   return (
@@ -32,7 +33,10 @@ const App: React.FC = () => {
       
           <GalleryHero />
           {/* <Herobanner /> */}
-         
+
+        {/* Gallery marquee — sits directly under the hero */}
+       
+
    
 
         {/* Full-width about section */}
