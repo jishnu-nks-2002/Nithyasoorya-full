@@ -750,7 +750,6 @@ export default function ElegantNavbar() {
           .empavai-deskbtn { display: none !important; }
           .en-ham          { display: flex !important; }
           .en-mob-drawer   { display: flex !important; }
-          .empavai-sub     { display: none !important; }
         }
       `}</style>
 
