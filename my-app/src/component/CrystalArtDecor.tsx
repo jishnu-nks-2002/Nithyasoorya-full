@@ -119,7 +119,7 @@ function ProductCard({ product, index, onInquire }: {
 }) {
   const [hov, setHov] = useState(false);
   const waText = encodeURIComponent(`Hello, I'm interested in "${product.name}" (${product.series}). Could you share more details?`);
-  const waLink = `https://wa.me/919876543210?text=${waText}`;
+  const waLink = `https://wa.me/+971507593631?text=${waText}`;
   const soldOut = product.availability === "Sold Out";
 
   return (
@@ -372,7 +372,7 @@ function InquireModal({ product, onClose }: { product: Product; onClose: () => v
               {/* Actions */}
               <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end", paddingTop: 4 }}>
                 <a
-                  href={`https://wa.me/919876543210?text=${encodeURIComponent(`Hello, I'm interested in "${product.name}". Could you share more details?`)}`}
+                  href={`https://wa.me/+971507593631?text=${encodeURIComponent(`Hello, I'm interested in "${product.name}". Could you share more details?`)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 7,

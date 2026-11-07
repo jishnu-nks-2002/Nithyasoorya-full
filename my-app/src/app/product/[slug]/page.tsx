@@ -18,7 +18,7 @@ const cormorant = Cormorant_Garamond({ weight: ['300', '400', '500', '600'], sub
 const jost      = Jost({ weight: ['300', '400', '500', '600'], subsets: ['latin'], display: 'swap' });
 
 const API_BASE        = process.env.NEXT_PUBLIC_API_URL        || 'http://localhost:5000';
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '919876543210'; // ← change this
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '+971507593631'; // ← change this
 
 const ACCENT = '#7c5cbf';
 
