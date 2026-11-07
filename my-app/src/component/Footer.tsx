@@ -533,7 +533,7 @@ const Footer: React.FC<FooterProps> = ({
     { handle: '@enjem_empavai', label: 'Enjem',       href: 'https://www.instagram.com/enjem_empavai?vrfl=MWpjeWo2MG0wY25lMw==' },
     { handle: '@nithyasoori',   label: 'Nithyasoori', href: 'https://www.instagram.com/nithyasoori?srtk=MXg1dGlqZm1jOXhtcQ==' },
   ],
-  email    = 'hello@empavai.com',
+  email    = 'nithya@empavai.com',
   phone    = '971507593631',
   address  = 'UAE',
   copyright = `© ${new Date().getFullYear()} Empavai. All rights reserved.`,
